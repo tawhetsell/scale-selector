@@ -28,8 +28,17 @@ export default function App() {
         </label>
 
         <label>Scale:&nbsp;
-          <select value={scaleId} onChange={e => setScaleId(e.target.value as any)}>
-            {Object.values(SCALES).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <select
+            value={scaleId}
+            onChange={e => setScaleId(e.target.value as keyof typeof SCALES)}
+          >
+            {Object.values(SCALES)
+              .filter(s => s.id !== 'ionian') // hide Ionian since Major is equivalent
+              .map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
           </select>
         </label>
 
