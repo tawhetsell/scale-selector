@@ -5,11 +5,53 @@ import { nameToPc } from './lib/music/notes';
 import { SCALES } from './lib/music/scales';
 import { getTuningPreset } from './lib/music/tunings';
 
+const SCALE_NAME_ABBREVIATIONS: Array<[RegExp, string]> = [
+  [/Harmonic/gi, 'Harm.'],
+  [/Melodic/gi, 'Mel.'],
+  [/Dominant/gi, 'Dom.'],
+  [/Diminished/gi, 'Dim.'],
+  [/Augmented/gi, 'Aug.'],
+  [/Pentatonic/gi, 'Pent.'],
+  [/Japanese/gi, 'Jap.'],
+  [/Natural/gi, 'Nat.'],
+  [/Minor/gi, 'Min.'],
+  [/Major/gi, 'Maj.'],
+  [/Locrian/gi, 'Locr.'],
+  [/Lydian/gi, 'Lyd.'],
+  [/Mixolydian/gi, 'Mixolyd.'],
+  [/Phrygian/gi, 'Phryg.'],
+  [/Aeolian/gi, 'Aeol.'],
+  [/Ionian/gi, 'Ion.'],
+  [/Chromatic/gi, 'Chrom.'],
+  [/Hungarian/gi, 'Hung.'],
+  [/Spanish/gi, 'Span.'],
+  [/Acoustic/gi, 'Acous.'],
+  [/Altered/gi, 'Alt.'],
+  [/Bebop/gi, 'Beb.'],
+];
+
+function shortenScaleName(name: string): string {
+  if (name.length <= 16) return name;
+
+  let label = name.replace(/\s*\([^)]*\)/g, '').trim();
+  label = label.replace(/[�]/g, '');
+  for (const [pattern, replacement] of SCALE_NAME_ABBREVIATIONS) {
+    label = label.replace(pattern, replacement);
+  }
+  label = label.replace(/\s+/g, ' ').trim();
+
+  if (label.length > 16) {
+    label = `${label.slice(0, 15).trimEnd()}…`;
+  }
+
+  return label;
+}
+
 export default function App() {
   const [strings, setStrings] = useState(6);
   const [scaleId, setScaleId] = useState<keyof typeof SCALES>('major');
   const [rootName, setRootName] = useState('E');
-  const [maxFrets, setMaxFrets] = useState(24);
+  const [maxFrets, setMaxFrets] = useState(12);
   const [labelMode, setLabelMode] = useState<'degree' | 'letters'>('degree');
   const [colorMode, setColorMode] = useState<'mono' | 'color'>('mono');
 
@@ -25,7 +67,6 @@ export default function App() {
     <div className="app">
       <header className="app__header">
         <h1>Scale Selector</h1>
-        <p className="app__subtitle">Dial in a tuning, key, and fret range to light up the neck.</p>
       </header>
 
       <section className="panel">
@@ -48,7 +89,7 @@ export default function App() {
           >
             {scaleOptions.map(s => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {shortenScaleName(s.name)}
               </option>
             ))}
           </select>

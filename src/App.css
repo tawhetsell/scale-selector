@@ -39,21 +39,35 @@
 
 .panel {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 16px;
   padding: 20px 24px;
   background: rgba(18, 18, 18, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.panel::-webkit-scrollbar {
+  height: 6px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
 }
 
 .control {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 0.95rem;
   color: rgba(241, 241, 241, 0.9);
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .control__label {
@@ -65,8 +79,9 @@
 }
 
 .control select {
-  min-width: 88px;
-  padding: 10px 12px;
+  min-width: 0;
+  width: max-content;
+  padding: 8px 10px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(33, 33, 33, 0.94);
@@ -95,6 +110,9 @@
 }
 
 .stage__frame svg {
+  width: 100%;
+  height: auto;
+  display: block;
   filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.1));
 }
 
@@ -105,8 +123,10 @@
 
   .panel {
     gap: 12px;
+    flex-wrap: wrap;
     padding: 16px 18px;
     border-radius: 14px;
+    overflow-x: visible;
   }
 
   .control {
