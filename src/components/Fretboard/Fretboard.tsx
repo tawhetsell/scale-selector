@@ -2,25 +2,31 @@ import React from 'react';
 import { computeFretMap } from '../../lib/music/theory';
 import { pcToName } from '../../lib/music/notes';
 
+type LabelMode = 'degree' | 'letters';
+type ColorMode = 'mono' | 'color';
+
 type Props = {
   openPcs: number[];       // lowest string first
   maxFrets: number;        // e.g., 24
   rootPc: number;
   intervals: number[];     // from selected scale
-  showDegrees?: boolean;
+  labelMode: LabelMode;
+  colorMode: ColorMode;
   preferSharps?: boolean;
 };
 
-const ROOT_COLOR = '#FF7664';
-const NOTE_COLOR = '#55A8FF';
 const INLAY_COLOR = '#2ED8A3';
+const MONO_ROOT = '#f5f5f5';
+const MONO_TONE = '#8f959d';
+const DEGREE_COLORS = ['#FF7664', '#FF9F68', '#FFD166', '#55A8FF', '#8A7CFF', '#2ED8A3', '#FF5EDB'];
 
 export default function Fretboard({
   openPcs,
   maxFrets,
   rootPc,
   intervals,
-  showDegrees = true,
+  labelMode,
+  colorMode,
   preferSharps = true,
 }: Props) {
   const strings = openPcs.length;
@@ -103,8 +109,15 @@ export default function Fretboard({
         const x = fretX(m.fret) - fretWidth / 2;
         const y = stringY(m.stringIndex);
         const isRoot = m.degree === 1;
-        const fill = isRoot ? ROOT_COLOR : NOTE_COLOR;
-        const label = showDegrees ? String(m.degree) : pcToName(m.pc, preferSharps);
+        const fill =
+          colorMode === 'mono'
+            ? isRoot
+              ? MONO_ROOT
+              : MONO_TONE
+            : DEGREE_COLORS[(Math.max(m.degree, 1) - 1) % DEGREE_COLORS.length];
+        const label = labelMode === 'degree' ? String(m.degree) : pcToName(m.pc, preferSharps);
+        const textFill = colorMode === 'mono' ? '#121417' : '#04080f';
+        const glow = colorMode === 'mono' ? 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.2))' : `drop-shadow(0 0 12px ${fill}44)`;
         return (
           <g key={`m-${m.stringIndex}-${m.fret}`}>
             <circle
@@ -112,9 +125,9 @@ export default function Fretboard({
               cy={y}
               r={11}
               fill={fill}
-              stroke="rgba(249, 249, 249, 0.85)"
+              stroke={colorMode === 'mono' ? 'rgba(255, 255, 255, 0.72)' : 'rgba(255, 255, 255, 0.9)'}
               strokeWidth={isRoot ? 2.2 : 1.4}
-              style={{ filter: `drop-shadow(0 0 10px ${fill}66)` }}
+              style={{ filter: glow }}
             />
             <text
               x={x}
@@ -122,7 +135,7 @@ export default function Fretboard({
               fontSize="10"
               dominantBaseline="middle"
               textAnchor="middle"
-              fill={isRoot ? '#050505' : '#ffffff'}
+              fill={textFill}
             >
               {label}
             </text>

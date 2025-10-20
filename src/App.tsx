@@ -10,7 +10,8 @@ export default function App() {
   const [scaleId, setScaleId] = useState<keyof typeof SCALES>('major');
   const [rootName, setRootName] = useState('E');
   const [maxFrets, setMaxFrets] = useState(24);
-  const [showDegrees, setShowDegrees] = useState(true);
+  const [labelMode, setLabelMode] = useState<'degree' | 'letters'>('degree');
+  const [colorMode, setColorMode] = useState<'mono' | 'color'>('mono');
 
   const openPcs = useMemo(() => getTuningPreset(strings), [strings]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
@@ -75,13 +76,26 @@ export default function App() {
           </select>
         </label>
 
-        <label className="control control--toggle">
-          <span className="control__label">Show degrees</span>
-          <input
-            type="checkbox"
-            checked={showDegrees}
-            onChange={e => setShowDegrees(e.target.checked)}
-          />
+        <label className="control">
+          <span className="control__label">Labels</span>
+          <select
+            value={labelMode}
+            onChange={e => setLabelMode(e.target.value as 'degree' | 'letters')}
+          >
+            <option value="degree">Degree</option>
+            <option value="letters">Letters</option>
+          </select>
+        </label>
+
+        <label className="control">
+          <span className="control__label">Colors</span>
+          <select
+            value={colorMode}
+            onChange={e => setColorMode(e.target.value as 'mono' | 'color')}
+          >
+            <option value="mono">Mono</option>
+            <option value="color">Color</option>
+          </select>
         </label>
       </section>
 
@@ -92,7 +106,8 @@ export default function App() {
             maxFrets={maxFrets}
             rootPc={rootPc}
             intervals={scale.intervals}
-            showDegrees={showDegrees}
+            labelMode={labelMode}
+            colorMode={colorMode}
             preferSharps={true}
           />
         </div>
