@@ -1,42 +1,133 @@
+:root {
+  color-scheme: dark;
+}
+
 #root {
-  max-width: 1280px;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.app {
+  width: min(1080px, 100%);
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 48px 32px 64px;
+  display: grid;
+  gap: 32px;
+  color: #f1f1f1;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app__header {
+  text-align: left;
+  display: grid;
+  gap: 8px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.app__header h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f7f7f7;
+}
+
+.app__subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.65);
+  max-width: 52ch;
+}
+
+.panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 24px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 16px;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: rgba(241, 241, 241, 0.9);
+}
+
+.control__label {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.control select {
+  min-width: 88px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(30, 30, 30, 0.9);
+  color: #f7f7f7;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.control select:focus {
+  border-color: rgba(255, 255, 255, 0.75);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
+.control--toggle {
+  padding-left: 24px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  margin-left: auto;
+}
+
+.control--toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #d600ff;
+  cursor: pointer;
+}
+
+.stage {
+  display: grid;
+}
+
+.stage__frame {
+  padding: 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.stage__frame svg {
+  filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.1));
+}
+
+@media (max-width: 720px) {
+  .app {
+    padding: 32px 20px 48px;
   }
-  to {
-    transform: rotate(360deg);
+
+  .panel {
+    gap: 12px;
+    padding: 16px 18px;
+    border-radius: 14px;
   }
-}
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+  .control {
+    flex: 1 1 100%;
+    justify-content: space-between;
   }
-}
 
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  .control--toggle {
+    margin-left: 0;
+    border-left: none;
+    padding-left: 0;
+  }
 }
