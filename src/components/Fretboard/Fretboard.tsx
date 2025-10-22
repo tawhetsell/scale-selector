@@ -1,15 +1,19 @@
 import React from 'react';
 import { computeFretMap } from '../../lib/music/theory';
 import { pcToName } from '../../lib/music/notes';
+import { getScaleDegreeColors } from '../../lib/music/colors';
+import type { SCALES } from '../../lib/music/scales';
 
 type LabelMode = 'degree' | 'letters';
 type ColorMode = 'mono' | 'color';
+type ScaleId = keyof typeof SCALES;
 
 type Props = {
   openPcs: number[];
   maxFrets: number;
   rootPc: number;
   intervals: number[];
+  scaleId: ScaleId;
   labelMode: LabelMode;
   colorMode: ColorMode;
   preferSharps?: boolean;
@@ -17,7 +21,6 @@ type Props = {
 
 const MONO_ROOT = '#f5f7fa';
 const MONO_TONE = '#8d949c';
-const DEGREE_COLORS = ['#FF7664', '#FF9F68', '#FFD166', '#55A8FF', '#8A7CFF', '#2ED8A3', '#FF5EDB'];
 const INLAY_COLOR = '#b6bcc3';
 
 export default function Fretboard({
@@ -25,6 +28,7 @@ export default function Fretboard({
   maxFrets,
   rootPc,
   intervals,
+  scaleId,
   labelMode,
   colorMode,
   preferSharps = true,
@@ -43,6 +47,7 @@ export default function Fretboard({
   const totalHeight = boardHeight + bottomMargin;
 
   const markers = computeFretMap(openPcs, maxFrets, rootPc, intervals);
+  const degreeColors = getScaleDegreeColors(scaleId);
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
   const stringY = (sIdx: number) => padding + (strings - 1 - sIdx) * stringGap;
@@ -119,7 +124,7 @@ export default function Fretboard({
             ? isRoot
               ? MONO_ROOT
               : MONO_TONE
-            : DEGREE_COLORS[(Math.max(marker.degree, 1) - 1) % DEGREE_COLORS.length];
+            : degreeColors[Math.min(Math.max(marker.degree, 1) - 1, degreeColors.length - 1)];
         const label = labelMode === 'degree' ? String(marker.degree) : pcToName(marker.pc, preferSharps);
         const textFill = colorMode === 'mono' ? '#121417' : '#09121f';
         const glow =

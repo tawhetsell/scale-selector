@@ -147,6 +147,7 @@ export default function App() {
             maxFrets={maxFrets}
             rootPc={rootPc}
             intervals={scale.intervals}
+            scaleId={scaleId}
             labelMode={labelMode}
             colorMode={colorMode}
             preferSharps={true}
