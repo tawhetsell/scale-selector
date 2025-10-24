@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { computeFretMap } from '../../lib/music/theory';
 import { pcToName } from '../../lib/music/notes';
 import { getScaleDegreeColors } from '../../lib/music/colors';
