@@ -48,6 +48,7 @@ export default function Fretboard({
 
   const markers = computeFretMap(openPcs, maxFrets, rootPc, intervals);
   const degreeColors = getScaleDegreeColors(scaleId);
+  const markerFontSize = 'var(--marker-font-size, 10px)';
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
   const stringY = (sIdx: number) => padding + (strings - 1 - sIdx) * stringGap;
@@ -146,7 +147,7 @@ export default function Fretboard({
             <text
               x={x}
               y={y}
-              fontSize="10"
+              fontSize={markerFontSize}
               dominantBaseline="middle"
               textAnchor="middle"
               fill={textFill}

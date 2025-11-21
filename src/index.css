@@ -1,4 +1,7 @@
 :root {
+  --marker-font-size: 10px;
+  --ui-font-size: calc(var(--marker-font-size) * 1.4);
+  font-size: var(--ui-font-size);
   font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
   line-height: 1.5;
   font-weight: 400;
