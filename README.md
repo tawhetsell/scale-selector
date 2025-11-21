@@ -12,3 +12,5 @@ Visualization options include the following selectors.
 6) Finger placement indicators, color corresponding to interal or monochromatic.
 
 This webpage was made through natural language prompting using gpt-5-codex-high in vscode and is a vite+react project. 
+
+URL - https://tawhetsell.github.io/scale-selector/
