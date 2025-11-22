@@ -2,7 +2,7 @@
 import { computeFretMap } from '../../lib/music/theory';
 import { pcToName } from '../../lib/music/notes';
 import { getScaleDegreeColors } from '../../lib/music/colors';
-import type { SCALES } from '../../lib/music/scales';
+import { SCALES } from '../../lib/music/scales';
 
 type LabelMode = 'degree' | 'letters';
 type ColorMode = 'mono' | 'color';
@@ -48,6 +48,7 @@ export default function Fretboard({
 
   const markers = computeFretMap(openPcs, maxFrets, rootPc, intervals);
   const degreeColors = getScaleDegreeColors(scaleId);
+  const scale = SCALES[scaleId];
   const markerFontSize = 'var(--marker-font-size, 10px)';
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
@@ -126,7 +127,12 @@ export default function Fretboard({
               ? MONO_ROOT
               : MONO_TONE
             : degreeColors[Math.min(Math.max(marker.degree, 1) - 1, degreeColors.length - 1)];
-        const label = labelMode === 'degree' ? String(marker.degree) : pcToName(marker.pc, preferSharps);
+
+        const label =
+          labelMode === 'degree'
+            ? scale.degreeLabels[marker.degree - 1] ?? String(marker.degree)
+            : pcToName(marker.pc, preferSharps);
+
         const textFill = colorMode === 'mono' ? '#121417' : '#09121f';
         const glow =
           colorMode === 'mono'
