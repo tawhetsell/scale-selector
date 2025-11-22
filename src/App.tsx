@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import Fretboard from './components/Fretboard/Fretboard';
 import { nameToPc } from './lib/music/notes';
 import { SCALES } from './lib/music/scales';
+import { getScaleTriads } from './lib/music/chords';
 import { getTuningPreset } from './lib/music/tunings';
 
 const SCALE_NAME_ABBREVIATIONS: Array<[RegExp, string]> = [
@@ -47,6 +48,8 @@ function shortenScaleName(name: string): string {
   return label;
 }
 
+type ViewMode = 'scale' | 'triads';
+
 export default function App() {
   const [strings, setStrings] = useState(6);
   const [scaleId, setScaleId] = useState<keyof typeof SCALES>('major');
@@ -54,6 +57,8 @@ export default function App() {
   const [maxFrets, setMaxFrets] = useState(12);
   const [labelMode, setLabelMode] = useState<'degree' | 'letters'>('degree');
   const [colorMode, setColorMode] = useState<'mono' | 'color'>('mono');
+  const [viewMode, setViewMode] = useState<ViewMode>('scale');
+  const [triadRootDegree, setTriadRootDegree] = useState(1);
 
   const openPcs = useMemo(() => getTuningPreset(strings), [strings]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
@@ -62,6 +67,20 @@ export default function App() {
     () => Object.values(SCALES).filter(s => s.id !== 'ionian'), // hide Ionian since Major is equivalent
     []
   );
+  const canShowTriads = scale.intervals.length === 7;
+  const triads = useMemo(() => (canShowTriads ? getScaleTriads(scale) : []), [canShowTriads, scale]);
+  const activeTriad = canShowTriads
+    ? triads.find((t) => t.rootDegree === triadRootDegree) ?? triads[0] ?? null
+    : null;
+
+  useEffect(() => {
+    if (!canShowTriads && viewMode !== 'scale') {
+      setViewMode('scale');
+    }
+    if (triadRootDegree > scale.intervals.length) {
+      setTriadRootDegree(1);
+    }
+  }, [canShowTriads, scale.intervals.length, triadRootDegree, viewMode]);
 
   return (
     <div className="app">
@@ -138,6 +157,34 @@ export default function App() {
             <option value="color">Color</option>
           </select>
         </label>
+
+        <label className="control">
+          <span className="control__label">View</span>
+          <select
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value as ViewMode)}
+            disabled={!canShowTriads}
+          >
+            <option value="scale">Scale tones</option>
+            <option value="triads">Triads</option>
+          </select>
+        </label>
+
+        {viewMode === 'triads' && canShowTriads && (
+          <label className="control">
+            <span className="control__label">Chord degree</span>
+            <select
+              value={triadRootDegree}
+              onChange={(e) => setTriadRootDegree(Number(e.target.value))}
+            >
+              {triads.map((triad) => (
+                <option key={triad.rootDegree} value={triad.rootDegree}>
+                  {triad.rootDegree}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </section>
 
       <section className="stage">
@@ -151,6 +198,8 @@ export default function App() {
             labelMode={labelMode}
             colorMode={colorMode}
             preferSharps={true}
+            viewMode={canShowTriads ? viewMode : 'scale'}
+            triadDegrees={canShowTriads && activeTriad ? activeTriad.degrees : null}
           />
         </div>
       </section>

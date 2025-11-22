@@ -7,6 +7,7 @@ import { SCALES } from '../../lib/music/scales';
 type LabelMode = 'degree' | 'letters';
 type ColorMode = 'mono' | 'color';
 type ScaleId = keyof typeof SCALES;
+type ViewMode = 'scale' | 'triads';
 
 type Props = {
   openPcs: number[];
@@ -17,6 +18,8 @@ type Props = {
   labelMode: LabelMode;
   colorMode: ColorMode;
   preferSharps?: boolean;
+  viewMode: ViewMode;
+  triadDegrees: number[] | null;
 };
 
 const MONO_ROOT = '#f5f7fa';
@@ -32,6 +35,8 @@ export default function Fretboard({
   labelMode,
   colorMode,
   preferSharps = true,
+  viewMode,
+  triadDegrees,
 }: Props) {
   const strings = openPcs.length;
   const isCompact = maxFrets <= 12;
@@ -50,6 +55,10 @@ export default function Fretboard({
   const degreeColors = getScaleDegreeColors(scaleId);
   const scale = SCALES[scaleId];
   const markerFontSize = 'var(--marker-font-size, 10px)';
+  const filteredMarkers =
+    viewMode === 'triads' && triadDegrees
+      ? markers.filter((m) => triadDegrees.includes(m.degree))
+      : markers;
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
   const stringY = (sIdx: number) => padding + (strings - 1 - sIdx) * stringGap;
@@ -117,7 +126,7 @@ export default function Fretboard({
       })}
 
       {/* markers */}
-      {markers.map((marker) => {
+      {filteredMarkers.map((marker) => {
         const x = fretX(marker.fret) - fretWidth / 2;
         const y = stringY(marker.stringIndex);
         const isRoot = marker.degree === 1;
