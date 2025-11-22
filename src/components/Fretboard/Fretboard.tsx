@@ -7,7 +7,7 @@ import { SCALES } from '../../lib/music/scales';
 type LabelMode = 'degree' | 'letters';
 type ColorMode = 'mono' | 'color';
 type ScaleId = keyof typeof SCALES;
-type ViewMode = 'scale' | 'triads';
+type ViewMode = 'scale' | 'triads' | 'tetrads';
 
 type Props = {
   openPcs: number[];
@@ -19,7 +19,7 @@ type Props = {
   colorMode: ColorMode;
   preferSharps?: boolean;
   viewMode: ViewMode;
-  triadDegrees: number[] | null;
+  triadDegrees: number[] | null; // used for both triads and tetrads (chord degrees)
 };
 
 const MONO_ROOT = '#f5f7fa';
@@ -55,8 +55,10 @@ export default function Fretboard({
   const degreeColors = getScaleDegreeColors(scaleId);
   const scale = SCALES[scaleId];
   const markerFontSize = 'var(--marker-font-size, 10px)';
+
+  // Filter markers for triads/tetrads
   const filteredMarkers =
-    viewMode === 'triads' && triadDegrees
+    (viewMode === 'triads' || viewMode === 'tetrads') && triadDegrees
       ? markers.filter((m) => triadDegrees.includes(m.degree))
       : markers;
 
