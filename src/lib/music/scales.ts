@@ -29,6 +29,7 @@ export const SCALES: Record<string, ScaleDef> = {
   melodicMinorAsc:  { id:'melodicMinorAsc', name:'Melodic Minor',       intervals:[0,2,3,5,7,9,11], degreeLabels:['1','2','b3','4','5','6','7'] },
   dorianb2:         { id:'dorianb2',        name:'Dorian ♭2',           intervals:[0,1,3,5,7,9,10], degreeLabels:['1','b2','b3','4','5','6','b7'] },
   lydianAug:        { id:'lydianAug',       name:'Lydian Aug',          intervals:[0,2,4,6,8,9,11], degreeLabels:['1','2','3','♯4','♯5','6','7'] },
+  lydianDom:        { id:'lydianDom',       name:'Lydian Dominant',     intervals:[0,2,4,6,7,9,10], degreeLabels:['1','2','3','♯4','5','6','b7'] },
   mixolydianb6:     { id:'mixolydianb6',    name:'Mixolydian ♭6',       intervals:[0,2,4,5,7,8,10], degreeLabels:['1','2','3','4','5','b6','b7'] },
   locrianNat2:      { id:'locrianNat2',     name:'Locrian ♮2',          intervals:[0,2,3,5,6,8,10], degreeLabels:['1','2','b3','4','b5','b6','b7'] },
   altered:          { id:'altered',         name:'Altered',             intervals:[0,1,3,4,6,8,10], degreeLabels:['1','b2','b3','3','b5','b6','b7'] },
@@ -41,9 +42,9 @@ export const SCALES: Record<string, ScaleDef> = {
   japanHirajoshi:   { id:'japanHirajoshi',  name:'Hirajoshi (Jpn)',     intervals:[0,2,3,7,8],      degreeLabels:['1','2','b3','5','b6'] },
 
   // --- Symmetric / synthetic ---
-  wholeTone:        { id:'wholeTone',     name:'Whole Tone',            intervals:[0,2,4,6,8,10],   degreeLabels:['1','2','3','♯4/♭5','♯5','b7'] },
-  diminishedHW:     { id:'diminishedHW',  name:'Dim (H–W)',             intervals:[0,1,3,4,6,7,9,10], degreeLabels:['1','b2','#2/♭3','3','b5','5','6','b7'] },
-  diminishedWH:     { id:'diminishedWH',  name:'Dim (W–H)',             intervals:[0,2,3,5,6,8,9,11], degreeLabels:['1','2','b3','4','b5','#5/♭6','6','7'] },
+  wholeTone:        { id:'wholeTone',       name:'Whole Tone',          intervals:[0,2,4,6,8,10],   degreeLabels:['1','2','3','♯4/♭5','♯5','b7'] },
+  diminishedHW:     { id:'diminishedHW',    name:'Dim (H–W)',           intervals:[0,1,3,4,6,7,9,10], degreeLabels:['1','b2','#2/♭3','3','b5','5','6','b7'] },
+  diminishedWH:     { id:'diminishedWH',    name:'Dim (W–H)',           intervals:[0,2,3,5,6,8,9,11], degreeLabels:['1','2','b3','4','b5','#5/♭6','6','7'] },
 
   // --- Popular “exotic” heptatonic scales ---
   doubleHarmonic:   { id:'doubleHarmonic',  name:'Double Harmonic',     intervals:[0,1,4,5,7,8,11], degreeLabels:['1','b2','3','4','5','b6','7'] },
@@ -54,18 +55,16 @@ export const SCALES: Record<string, ScaleDef> = {
   persian:          { id:'persian',         name:'Persian',             intervals:[0,1,4,5,6,8,11], degreeLabels:['1','b2','3','4','b5','b6','7'] },
   enigmatic:        { id:'enigmatic',       name:'Enigmatic',           intervals:[0,1,4,6,8,10,11], degreeLabels:['1','b2','3','♯4','♯5','b7','7'] },
 
-  // --- Lydian Dominant / Acoustic (canonicalized as "acoustic") ---
-  acoustic:         { id:'acoustic',        name:'Acoustic (Lyd♭7)',    intervals:[0,2,4,6,7,9,10], degreeLabels:['1','2','3','♯4','5','6','b7'] },
-
   // --- Blues & bebop ---
-  majorBlues:       { id:'majorBlues',    name:'Major Blues',          intervals:[0,2,3,4,7,9],    degreeLabels:['1','2','b3','3','5','6'] },
-  dominantBebop:    { id:'dominantBebop', name:'Bebop Dominant',       intervals:[0,2,4,5,7,9,10,11], degreeLabels:['1','2','3','4','5','6','b7','7'] },
-  majorBebop:       { id:'majorBebop',    name:'Bebop Major',          intervals:[0,2,4,5,7,8,9,11], degreeLabels:['1','2','3','4','5','b6','6','7'] },
-  minorBebop:       { id:'minorBebop',    name:'Bebop Minor',          intervals:[0,2,3,5,7,9,10,11], degreeLabels:['1','2','b3','4','5','6','b7','7'] },
+  majorBlues:       { id:'majorBlues',      name:'Major Blues',         intervals:[0,2,3,4,7,9],    degreeLabels:['1','2','b3','3','5','6'] },
+  dominantBebop:    { id:'dominantBebop',   name:'Bebop Dominant',      intervals:[0,2,4,5,7,9,10,11], degreeLabels:['1','2','3','4','5','6','b7','7'] },
+  majorBebop:       { id:'majorBebop',      name:'Bebop Major',         intervals:[0,2,4,5,7,8,9,11], degreeLabels:['1','2','3','4','5','b6','6','7'] },
+  minorBebop:       { id:'minorBebop',      name:'Bebop Minor',         intervals:[0,2,3,5,7,9,10,11], degreeLabels:['1','2','b3','4','5','6','b7','7'] },
+  minorSixthDim:    { id:'minorSixthDim',   name:'Minor 6th Diminished (Barry Harris)', intervals:[0,2,3,5,7,8,9,11], degreeLabels:['1','2','b3','4','5','♯5','6','7'] },
 
   // --- Triads ---
-  majorTriad:       { id:'majorTriad',      name:'Triad Major',        intervals:[0,4,7],          degreeLabels:['1','3','5'] },
-  minorTriad:       { id:'minorTriad',      name:'Triad Minor',        intervals:[0,3,7],          degreeLabels:['1','b3','5'] },
-  diminishedTriad:  { id:'diminishedTriad', name:'Triad Dim',          intervals:[0,3,6],          degreeLabels:['1','b3','b5'] },
-  augmentedTriad:   { id:'augmentedTriad',  name:'Triad Aug',          intervals:[0,4,8],          degreeLabels:['1','3','♯5'] },
+  majorTriad:       { id:'majorTriad',      name:'Triad Major',         intervals:[0,4,7],          degreeLabels:['1','3','5'] },
+  minorTriad:       { id:'minorTriad',      name:'Triad Minor',         intervals:[0,3,7],          degreeLabels:['1','b3','5'] },
+  diminishedTriad:  { id:'diminishedTriad', name:'Triad Dim',           intervals:[0,3,6],          degreeLabels:['1','b3','b5'] },
+  augmentedTriad:   { id:'augmentedTriad',  name:'Triad Aug',           intervals:[0,4,8],          degreeLabels:['1','3','♯5'] },
 };
