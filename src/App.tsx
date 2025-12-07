@@ -270,7 +270,6 @@ export default function App() {
           <select
             value={colorMode}
             onChange={(e) => setColorMode(e.target.value as 'mono' | 'color')}
-            disabled={isProgressionActive}
           >
             <option value="mono">Mono</option>
             <option value="color">Color</option>
