@@ -50,7 +50,6 @@ function shortenScaleName(name: string): string {
 }
 
 type ViewMode = 'scale' | 'triads' | 'tetrads';
-type DisplayMode = 'color-coded' | 'position';
 type RootString = 6 | 5 | 4;
 type Voicing = 'root' | '1st' | '2nd' | '3rd';
 
@@ -64,11 +63,11 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('scale');
   const [chordRootDegree, setChordRootDegree] = useState(1);
   const [selectedProgression, setSelectedProgression] = useState<string>('scale');
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('color-coded');
-  const [rootString, setRootString] = useState<RootString>(6);
+  const [rootString, setRootString] = useState<RootString>(4);
   const [voicing, setVoicing] = useState<Voicing>('root');
+  const [dropTuning, setDropTuning] = useState(false);
 
-  const openPcs = useMemo(() => getTuningPreset(strings), [strings]);
+  const openPcs = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
 
   const scale = SCALES[scaleId];
@@ -98,6 +97,9 @@ export default function App() {
 
   const isProgressionActive = selectedProgression !== 'scale' && activeProgression !== null;
 
+  // Single-chord voicing mode: when CHORDS = Triads/Tetrads but no progression is selected
+  const isSingleChordVoicingMode = (viewMode === 'triads' || viewMode === 'tetrads') && !isProgressionActive;
+
   const triads = useMemo(
     () => (canShowTriads ? getScaleTriads(scale) : []),
     [canShowTriads, scale]
@@ -118,12 +120,29 @@ export default function App() {
       ? tetrads.find((t) => t.rootDegree === chordRootDegree) ?? tetrads[0] ?? null
       : null;
 
-  const activeChordDegrees =
-    viewMode === 'triads' && activeTriad
-      ? activeTriad.degrees
-      : viewMode === 'tetrads' && activeTetrad
-      ? activeTetrad.degrees
-      : null;
+  // Get base chord degrees and apply voicing rotation
+  const activeChordDegrees = useMemo(() => {
+    let degrees: number[] | null = null;
+
+    if (viewMode === 'triads' && activeTriad) {
+      degrees = activeTriad.degrees;
+    } else if (viewMode === 'tetrads' && activeTetrad) {
+      degrees = activeTetrad.degrees;
+    }
+
+    if (!degrees) return null;
+
+    // Apply voicing rotation (same logic as in Fretboard for progressions)
+    const inversionAmount =
+      voicing === '1st' ? 1 :
+      voicing === '2nd' ? 2 :
+      voicing === '3rd' ? 3 : 0;
+
+    if (inversionAmount === 0) return degrees;
+
+    // Rotate array left by inversionAmount
+    return [...degrees.slice(inversionAmount), ...degrees.slice(0, inversionAmount)];
+  }, [viewMode, activeTriad, activeTetrad, voicing]);
 
   useEffect(() => {
     if (!canShowTriads && viewMode !== 'scale') {
@@ -258,7 +277,7 @@ export default function App() {
           </select>
         </label>
 
-        {/* Row 3: PROGRESSION, DISPLAY, ROOT STRING */}
+        {/* Row 3: PROGRESSION, ROOT STRING */}
         <label className="control">
           <span className="control__label">PROG</span>
           <select
@@ -276,27 +295,15 @@ export default function App() {
         </label>
 
         <label className="control">
-          <span className="control__label">DISPLAY</span>
-          <select
-            value={displayMode}
-            onChange={(e) => setDisplayMode(e.target.value as DisplayMode)}
-            disabled={!isProgressionActive}
-          >
-            <option value="color-coded">Color-coded</option>
-            <option value="position">Position</option>
-          </select>
-        </label>
-
-        <label className="control">
           <span className="control__label">ROOT STR</span>
           <select
             value={rootString}
             onChange={(e) => setRootString(Number(e.target.value) as RootString)}
-            disabled={!isProgressionActive || displayMode !== 'position'}
+            disabled={!isProgressionActive}
           >
-            <option value={6}>6th string</option>
-            <option value={5}>5th string</option>
             <option value={4}>4th string</option>
+            <option value={5}>5th string</option>
+            <option value={6}>6th string</option>
           </select>
         </label>
 
@@ -305,12 +312,23 @@ export default function App() {
           <select
             value={voicing}
             onChange={(e) => setVoicing(e.target.value as Voicing)}
-            disabled={!isProgressionActive}
+            disabled={viewMode === 'scale'}
           >
             <option value="root">Root</option>
             <option value="1st">1st Inv</option>
             <option value="2nd">2nd Inv</option>
             {viewMode === 'tetrads' && <option value="3rd">3rd Inv</option>}
+          </select>
+        </label>
+
+        <label className="control">
+          <span className="control__label">DROP</span>
+          <select
+            value={dropTuning ? 'on' : 'off'}
+            onChange={(e) => setDropTuning(e.target.value === 'on')}
+          >
+            <option value="off">Off</option>
+            <option value="on">Drop {strings}</option>
           </select>
         </label>
       </section>
@@ -328,8 +346,14 @@ export default function App() {
             preferSharps={true}
             viewMode={canShowTriads ? viewMode : 'scale'}
             triadDegrees={canShowTriads && activeChordDegrees ? activeChordDegrees : null}
-            progressionNumerals={isProgressionActive && activeProgression ? activeProgression.numerals : null}
-            displayMode={displayMode}
+            progressionNumerals={
+              isProgressionActive && activeProgression
+                ? activeProgression.numerals
+                : isSingleChordVoicingMode
+                ? [chordRootDegree] // Synthetic single-chord "progression"
+                : null
+            }
+            usePositionMode={isProgressionActive}
             rootString={rootString}
             voicing={voicing}
           />

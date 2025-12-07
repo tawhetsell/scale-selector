@@ -8,7 +8,6 @@ type LabelMode = 'degree' | 'letters';
 type ColorMode = 'mono' | 'color';
 type ScaleId = keyof typeof SCALES;
 type ViewMode = 'scale' | 'triads' | 'tetrads';
-type DisplayMode = 'color-coded' | 'position';
 type RootString = 6 | 5 | 4;
 type Voicing = 'root' | '1st' | '2nd' | '3rd';
 
@@ -23,8 +22,8 @@ type Props = {
   preferSharps?: boolean;
   viewMode: ViewMode;
   triadDegrees: number[] | null; // used for both triads and tetrads (chord degrees)
-  progressionNumerals: number[] | null; // chord degrees in the progression
-  displayMode: DisplayMode;
+  progressionNumerals: number[] | null; // chord degrees in the progression (or single-chord voicing)
+  usePositionMode: boolean; // whether to use CAGED position filtering
   rootString: RootString;
   voicing: Voicing;
 };
@@ -56,7 +55,7 @@ export default function Fretboard({
   viewMode,
   triadDegrees,
   progressionNumerals,
-  displayMode,
+  usePositionMode,
   rootString,
   voicing,
 }: Props) {
@@ -116,7 +115,8 @@ export default function Fretboard({
     ? progressionNumerals.flatMap((chordRoot) => getChordDegrees(chordRoot))
     : null;
 
-  // Get the bass notes (first note of each chord after inversion)
+  // Get the bass note degrees (first note of each chord after inversion)
+  // This is used as a fallback when not in position mode
   const bassNoteDegrees = isProgressionMode
     ? new Set(progressionNumerals.map((chordRoot) => getChordDegrees(chordRoot)[0]))
     : null;
@@ -142,7 +142,7 @@ export default function Fretboard({
 
   // Find the position (fret range) for position-based display
   const positionFretRange = (() => {
-    if (!isProgressionMode || displayMode !== 'position' || !progressionNumerals) {
+    if (!usePositionMode || !isProgressionMode || !progressionNumerals) {
       return null;
     }
 
@@ -183,8 +183,8 @@ export default function Fretboard({
       const uniqueDegrees = [...new Set(progressionChordDegrees)];
       let filtered = markers.filter((m) => uniqueDegrees.includes(m.degree));
 
-      // If position mode, further filter to the fret range
-      if (displayMode === 'position' && positionFretRange) {
+      // Filter to the fret range for position-based display
+      if (positionFretRange) {
         filtered = filtered.filter(
           (m) => m.fret >= positionFretRange.minFret && m.fret <= positionFretRange.maxFret
         );
@@ -196,6 +196,69 @@ export default function Fretboard({
       return markers.filter((m) => triadDegrees.includes(m.degree));
     }
     return markers;
+  })();
+
+  // In position mode (when positionFretRange is active), compute specific bass markers
+  // Each chord in the progression gets exactly one bass note marker (the lowest-pitched one in the box)
+  const positionBassMarkerKeys: Set<string> | null = (() => {
+    if (!isProgressionMode || !positionFretRange || !progressionNumerals) {
+      return null;
+    }
+
+    const bassKeys = new Set<string>();
+
+    for (const chordRoot of progressionNumerals) {
+      const chordDegrees = getChordDegrees(chordRoot);
+      const bassDegree = chordDegrees[0]; // First element is the bass note for this voicing
+
+      // Find all markers in the filtered set with this bass degree
+      const bassMarkersForChord = filteredMarkers.filter((m) => m.degree === bassDegree);
+
+      if (bassMarkersForChord.length === 0) {
+        continue;
+      }
+
+      // Choose the lowest-pitched marker
+      // Lower stringIndex = higher string (thinner, higher pitch)
+      // Higher stringIndex = lower string (thicker, lower pitch)
+      // Lower fret = lower pitch on same string
+      // So we want: highest stringIndex first, then lowest fret
+      const lowestPitched = bassMarkersForChord.reduce((lowest, current) => {
+        // Compare by string first (higher stringIndex = lower pitch = preferred)
+        if (current.stringIndex > lowest.stringIndex) {
+          return current;
+        }
+        if (current.stringIndex < lowest.stringIndex) {
+          return lowest;
+        }
+        // Same string: lower fret = lower pitch = preferred
+        return current.fret < lowest.fret ? current : lowest;
+      });
+
+      bassKeys.add(`${lowestPitched.stringIndex}:${lowestPitched.fret}`);
+    }
+
+    return bassKeys;
+  })();
+
+  // In position mode, identify the key root anchor marker (degree 1 on the selected root string)
+  // This marker gets a special halo effect
+  const keyRootAnchorKey: string | null = (() => {
+    if (!isProgressionMode || !positionFretRange) {
+      return null;
+    }
+
+    const rootStringIndex = strings - rootString;
+    if (rootStringIndex < 0 || rootStringIndex >= strings) {
+      return null;
+    }
+
+    // Find the degree 1 marker on the root string within the position
+    const anchorMarker = filteredMarkers.find(
+      (m) => m.stringIndex === rootStringIndex && m.degree === 1
+    );
+
+    return anchorMarker ? `${anchorMarker.stringIndex}:${anchorMarker.fret}` : null;
   })();
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
@@ -268,17 +331,34 @@ export default function Fretboard({
         const x = fretX(marker.fret) - fretWidth / 2;
         const y = stringY(marker.stringIndex);
         const isRoot = marker.degree === 1;
-        const isBassNote = isProgressionMode && bassNoteDegrees?.has(marker.degree);
+
+        const markerKey = `${marker.stringIndex}:${marker.fret}`;
+
+        // Check if this is the key root anchor (degree 1 on root string in position mode)
+        const isKeyRootAnchor = keyRootAnchorKey === markerKey;
+
+        // Determine if this marker is a bass note
+        // In position mode: use the specific bass marker keys (one per chord)
+        // BUT exclude degree-1 notes that aren't the key root anchor (they're just regular roots)
+        // Otherwise: use the degree-based check (all markers with bass degree)
+        const isBassNote = isProgressionMode && (
+          positionBassMarkerKeys
+            ? positionBassMarkerKeys.has(markerKey) && (marker.degree !== 1 || isKeyRootAnchor)
+            : bassNoteDegrees?.has(marker.degree)
+        );
 
         // Determine fill color based on mode
-        // In progression mode, always use chord-based colors regardless of display mode
+        // Mono mode always uses neutral grayscale, regardless of chords/progression/voicing
+        // Multi-chord progressions (2+ chords) use progression colors in Color mode
+        // Single-chord voicing mode uses degree colors in Color mode
+        const isMultiChordProgression = progressionNumerals !== null && progressionNumerals.length > 1;
         let fill: string;
-        if (isProgressionMode && degreeToProgressionChord) {
-          // Use progression chord colors
+        if (colorMode === 'mono') {
+          fill = isRoot ? MONO_ROOT : MONO_TONE;
+        } else if (isMultiChordProgression && degreeToProgressionChord) {
+          // Use progression chord colors (only for real multi-chord progressions in Color mode)
           const chordIndex = degreeToProgressionChord.get(marker.degree) ?? 0;
           fill = PROGRESSION_COLORS[chordIndex % PROGRESSION_COLORS.length];
-        } else if (colorMode === 'mono') {
-          fill = isRoot ? MONO_ROOT : MONO_TONE;
         } else {
           fill = degreeColors[Math.min(Math.max(marker.degree, 1) - 1, degreeColors.length - 1)];
         }
@@ -288,19 +368,38 @@ export default function Fretboard({
             ? scale.degreeLabels[marker.degree - 1] ?? String(marker.degree)
             : pcToName(marker.pc, preferSharps);
 
-        const textFill = isProgressionMode || colorMode !== 'mono' ? '#09121f' : '#121417';
+        const textFill = colorMode !== 'mono' ? '#09121f' : '#121417';
         const glow =
-          colorMode === 'mono' && !isProgressionMode
+          colorMode === 'mono'
             ? 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.14))'
             : `drop-shadow(0 0 12px ${fill}44)`;
 
-        // Determine stroke style - bass notes get a thick white outline
-        const strokeColor = isBassNote ? '#ffffff' : (colorMode === 'mono' ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 255, 255, 0.9)');
-        const strokeWidth = isBassNote ? 3 : (isRoot ? 2.2 : 1.4);
-        const radius = isBassNote ? 12 : 11;
+        // Determine stroke style - bass notes and key root anchor get a thick white outline
+        // In mono mode, root notes (white fill) get a gray stroke for contrast
+        const hasThickStroke = isBassNote || isKeyRootAnchor;
+        let strokeColor: string;
+        if (hasThickStroke) {
+          strokeColor = '#ffffff';
+        } else if (colorMode === 'mono') {
+          // In mono mode: root (white fill) gets gray stroke, others get light stroke
+          strokeColor = isRoot ? 'rgba(141, 148, 156, 0.8)' : 'rgba(255, 255, 255, 0.65)';
+        } else {
+          strokeColor = 'rgba(255, 255, 255, 0.9)';
+        }
+        const strokeWidth = hasThickStroke ? 3 : (isRoot ? 2.2 : 1.4);
+        const radius = hasThickStroke ? 12 : 11;
 
         return (
           <g key={`m-${marker.stringIndex}-${marker.fret}`}>
+            {/* Halo for key root anchor in position mode */}
+            {isKeyRootAnchor && (
+              <circle
+                cx={x}
+                cy={y}
+                r={20}
+                fill="rgba(255, 255, 255, 0.15)"
+              />
+            )}
             <circle
               cx={x}
               cy={y}
