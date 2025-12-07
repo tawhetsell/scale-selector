@@ -5,6 +5,7 @@ import { nameToPc } from './lib/music/notes';
 import { SCALES } from './lib/music/scales';
 import { getScaleTriads, getScaleTetrads } from './lib/music/chords';
 import { getTuningPreset } from './lib/music/tunings';
+import { getScaleProgressions, supportsProgressions, type Progression } from './lib/music/progressions';
 
 const SCALE_NAME_ABBREVIATIONS: Array<[RegExp, string]> = [
   [/Harmonic/gi, 'Harm.'],
@@ -49,6 +50,9 @@ function shortenScaleName(name: string): string {
 }
 
 type ViewMode = 'scale' | 'triads' | 'tetrads';
+type DisplayMode = 'color-coded' | 'position';
+type RootString = 6 | 5 | 4;
+type Voicing = 'root' | '1st' | '2nd' | '3rd';
 
 export default function App() {
   const [strings, setStrings] = useState(6);
@@ -59,6 +63,10 @@ export default function App() {
   const [colorMode, setColorMode] = useState<'mono' | 'color'>('mono');
   const [viewMode, setViewMode] = useState<ViewMode>('scale');
   const [chordRootDegree, setChordRootDegree] = useState(1);
+  const [selectedProgression, setSelectedProgression] = useState<string>('scale');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('color-coded');
+  const [rootString, setRootString] = useState<RootString>(6);
+  const [voicing, setVoicing] = useState<Voicing>('root');
 
   const openPcs = useMemo(() => getTuningPreset(strings), [strings]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
@@ -71,6 +79,24 @@ export default function App() {
   );
 
   const canShowTriads = scale.intervals.length === 7;
+  const canShowProgressions = supportsProgressions(scaleId);
+
+  const scaleProgressions = useMemo(
+    () => getScaleProgressions(scaleId),
+    [scaleId]
+  );
+
+  const availableProgressions: Progression[] = useMemo(
+    () => scaleProgressions?.progressions ?? [],
+    [scaleProgressions]
+  );
+
+  const activeProgression = useMemo(
+    () => availableProgressions.find((p) => p.name === selectedProgression) ?? null,
+    [availableProgressions, selectedProgression]
+  );
+
+  const isProgressionActive = selectedProgression !== 'scale' && activeProgression !== null;
 
   const triads = useMemo(
     () => (canShowTriads ? getScaleTriads(scale) : []),
@@ -108,7 +134,21 @@ export default function App() {
     }
   }, [canShowTriads, scale.intervals.length, chordRootDegree, viewMode]);
 
-  const degreeDisabled = !canShowTriads || viewMode === 'scale';
+  // Reset progression when scale changes and doesn't support progressions
+  useEffect(() => {
+    if (!canShowProgressions && selectedProgression !== 'scale') {
+      setSelectedProgression('scale');
+    }
+  }, [canShowProgressions, selectedProgression]);
+
+  // When a progression is selected, default to triads view
+  useEffect(() => {
+    if (isProgressionActive && viewMode === 'scale') {
+      setViewMode('triads');
+    }
+  }, [isProgressionActive, viewMode]);
+
+  const degreeDisabled = !canShowTriads || viewMode === 'scale' || isProgressionActive;
 
   return (
     <div className="app">
@@ -211,9 +251,66 @@ export default function App() {
           <select
             value={colorMode}
             onChange={(e) => setColorMode(e.target.value as 'mono' | 'color')}
+            disabled={isProgressionActive}
           >
             <option value="mono">Mono</option>
             <option value="color">Color</option>
+          </select>
+        </label>
+
+        {/* Row 3: PROGRESSION, DISPLAY, ROOT STRING */}
+        <label className="control">
+          <span className="control__label">PROG</span>
+          <select
+            value={selectedProgression}
+            onChange={(e) => setSelectedProgression(e.target.value)}
+            disabled={!canShowProgressions}
+          >
+            <option value="scale">Scale</option>
+            {availableProgressions.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="control">
+          <span className="control__label">DISPLAY</span>
+          <select
+            value={displayMode}
+            onChange={(e) => setDisplayMode(e.target.value as DisplayMode)}
+            disabled={!isProgressionActive}
+          >
+            <option value="color-coded">Color-coded</option>
+            <option value="position">Position</option>
+          </select>
+        </label>
+
+        <label className="control">
+          <span className="control__label">ROOT STR</span>
+          <select
+            value={rootString}
+            onChange={(e) => setRootString(Number(e.target.value) as RootString)}
+            disabled={!isProgressionActive || displayMode !== 'position'}
+          >
+            <option value={6}>6th string</option>
+            <option value={5}>5th string</option>
+            <option value={4}>4th string</option>
+          </select>
+        </label>
+
+        <label className="control">
+          <span className="control__label">VOICING</span>
+          <select
+            value={voicing}
+            onChange={(e) => setVoicing(e.target.value as Voicing)}
+            disabled={!isProgressionActive}
+          >
+            <option value="root">Root</option>
+            <option value="1st">1st Inv</option>
+            <option value="2nd">2nd Inv</option>
+            {viewMode === 'tetrads' && <option value="3rd">3rd Inv</option>}
           </select>
         </label>
       </section>
@@ -231,6 +328,10 @@ export default function App() {
             preferSharps={true}
             viewMode={canShowTriads ? viewMode : 'scale'}
             triadDegrees={canShowTriads && activeChordDegrees ? activeChordDegrees : null}
+            progressionNumerals={isProgressionActive && activeProgression ? activeProgression.numerals : null}
+            displayMode={displayMode}
+            rootString={rootString}
+            voicing={voicing}
           />
         </div>
       </section>
