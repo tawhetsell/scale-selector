@@ -35,3 +35,33 @@ export function nameToPc(name: string): number {
   if (n == null) throw new Error(`Unknown note name: ${name}`);
   return n;
 }
+
+/**
+ * Get the chord suffix for display based on chord quality.
+ */
+export function getChordSuffix(quality: string): string {
+  switch (quality) {
+    case 'maj': return '';
+    case 'min': return 'm';
+    case 'dim': return '°';
+    case 'aug': return '+';
+    case 'maj7': return 'maj7';
+    case 'min7': return 'm7';
+    case 'dom7': return '7';
+    case 'dim7': return '°7';
+    case 'minMaj7': return 'mM7';
+    case 'aug7': return '+7';
+    case 'half-dim': return 'ø7';
+    default: return '';
+  }
+}
+
+/**
+ * Get a displayable chord name from root pitch class and quality.
+ * Example: (0, 'min') => 'Cm', (4, 'maj') => 'E'
+ */
+export function getChordName(rootPc: number, quality: string, preferSharps = true): string {
+  const rootName = pcToName(rootPc, preferSharps);
+  const suffix = getChordSuffix(quality);
+  return `${rootName}${suffix}`;
+}

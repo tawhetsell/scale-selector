@@ -5,7 +5,7 @@ import { nameToPc } from './lib/music/notes';
 import { SCALES } from './lib/music/scales';
 import { getScaleTriads, getScaleTetrads } from './lib/music/chords';
 import { getTuningPreset } from './lib/music/tunings';
-import { getScaleProgressions, supportsProgressions, type Progression } from './lib/music/progressions';
+import { getScaleProgressions, supportsProgressions } from './lib/music/progressions';
 
 const SCALE_NAME_ABBREVIATIONS: Array<[RegExp, string]> = [
   [/Harmonic/gi, 'Harm.'],
@@ -53,6 +53,9 @@ type ViewMode = 'scale' | 'triads' | 'tetrads';
 type RootString = 6 | 5 | 4;
 type Voicing = 'root' | '1st' | '2nd' | '3rd';
 
+// Static scale options - computed once at module load (hide Ionian since Major is equivalent)
+const SCALE_OPTIONS = Object.values(SCALES).filter((s) => s.id !== 'ionian');
+
 export default function App() {
   const [strings, setStrings] = useState(6);
   const [scaleId, setScaleId] = useState<keyof typeof SCALES>('major');
@@ -66,29 +69,23 @@ export default function App() {
   const [rootString, setRootString] = useState<RootString>(4);
   const [voicing, setVoicing] = useState<Voicing>('root');
   const [dropTuning, setDropTuning] = useState(false);
+  const [currentStep, setCurrentStep] = useState<number | null>(null);
 
   const openPcs = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
 
   const scale = SCALES[scaleId];
 
-  const scaleOptions = useMemo(
-    () => Object.values(SCALES).filter((s) => s.id !== 'ionian'), // hide Ionian since Major is equivalent
-    []
-  );
-
   const canShowTriads = scale.intervals.length === 7;
   const canShowProgressions = supportsProgressions(scaleId);
 
-  const scaleProgressions = useMemo(
-    () => getScaleProgressions(scaleId),
-    [scaleId]
-  );
-
-  const availableProgressions: Progression[] = useMemo(
-    () => scaleProgressions?.progressions ?? [],
-    [scaleProgressions]
-  );
+  const { availableProgressions, chordQualities } = useMemo(() => {
+    const data = getScaleProgressions(scaleId);
+    return {
+      availableProgressions: data?.progressions ?? [],
+      chordQualities: data?.chordQualities ?? [],
+    };
+  }, [scaleId]);
 
   const activeProgression = useMemo(
     () => availableProgressions.find((p) => p.name === selectedProgression) ?? null,
@@ -120,29 +117,15 @@ export default function App() {
       ? tetrads.find((t) => t.rootDegree === chordRootDegree) ?? tetrads[0] ?? null
       : null;
 
-  // Get base chord degrees and apply voicing rotation
+  // Get base chord degrees (without voicing rotation - filtering handles inversion)
   const activeChordDegrees = useMemo(() => {
-    let degrees: number[] | null = null;
-
     if (viewMode === 'triads' && activeTriad) {
-      degrees = activeTriad.degrees;
+      return activeTriad.degrees;
     } else if (viewMode === 'tetrads' && activeTetrad) {
-      degrees = activeTetrad.degrees;
+      return activeTetrad.degrees;
     }
-
-    if (!degrees) return null;
-
-    // Apply voicing rotation (same logic as in Fretboard for progressions)
-    const inversionAmount =
-      voicing === '1st' ? 1 :
-      voicing === '2nd' ? 2 :
-      voicing === '3rd' ? 3 : 0;
-
-    if (inversionAmount === 0) return degrees;
-
-    // Rotate array left by inversionAmount
-    return [...degrees.slice(inversionAmount), ...degrees.slice(0, inversionAmount)];
-  }, [viewMode, activeTriad, activeTetrad, voicing]);
+    return null;
+  }, [viewMode, activeTriad, activeTetrad]);
 
   useEffect(() => {
     if (!canShowTriads && viewMode !== 'scale') {
@@ -160,12 +143,22 @@ export default function App() {
     }
   }, [canShowProgressions, selectedProgression]);
 
-  // When a progression is selected, default to triads view
+  // Reset step when progression changes
   useEffect(() => {
-    if (isProgressionActive && viewMode === 'scale') {
-      setViewMode('triads');
+    setCurrentStep(null);
+  }, [selectedProgression]);
+
+  // When a progression is selected, default to triads view and color mode
+  useEffect(() => {
+    if (isProgressionActive) {
+      if (viewMode === 'scale') {
+        setViewMode('triads');
+      }
+      if (colorMode === 'mono') {
+        setColorMode('color');
+      }
     }
-  }, [isProgressionActive, viewMode]);
+  }, [isProgressionActive, viewMode, colorMode]);
 
   const degreeDisabled = !canShowTriads || viewMode === 'scale' || isProgressionActive;
 
@@ -183,7 +176,7 @@ export default function App() {
             value={scaleId}
             onChange={(e) => setScaleId(e.target.value as keyof typeof SCALES)}
           >
-            {scaleOptions.map((s) => (
+            {SCALE_OPTIONS.map((s) => (
               <option key={s.id} value={s.id}>
                 {shortenScaleName(s.name)}
               </option>
@@ -192,7 +185,7 @@ export default function App() {
         </label>
 
         <label className="control">
-          <span className="control__label">ROOT</span>
+          <span className="control__label">KEY</span>
           <select value={rootName} onChange={(e) => setRootName(e.target.value)}>
             {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map((n) => (
               <option key={n} value={n}>
@@ -232,7 +225,7 @@ export default function App() {
             onChange={(e) => setViewMode(e.target.value as ViewMode)}
             disabled={!canShowTriads}
           >
-            <option value="scale">Scale tones</option>
+            <option value="scale">Scale</option>
             <option value="triads">Triads</option>
             <option value="tetrads">Tetrads</option>
           </select>
@@ -260,7 +253,7 @@ export default function App() {
             value={labelMode}
             onChange={(e) => setLabelMode(e.target.value as 'degree' | 'letters')}
           >
-            <option value="degree">Degree</option>
+            <option value="degree">Numbers</option>
             <option value="letters">Letters</option>
           </select>
         </label>
@@ -355,6 +348,10 @@ export default function App() {
             usePositionMode={isProgressionActive}
             rootString={rootString}
             voicing={voicing}
+            chordQualities={chordQualities}
+            currentStep={currentStep}
+            onStepChange={setCurrentStep}
+            progressionName={isProgressionActive ? selectedProgression : null}
           />
         </div>
       </section>

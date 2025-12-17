@@ -1,8 +1,9 @@
-// import React from 'react';
+import { useMemo, useCallback } from 'react';
 import { computeFretMap } from '../../lib/music/theory';
-import { pcToName } from '../../lib/music/notes';
+import { pcToName, getChordName, normalizePc } from '../../lib/music/notes';
 import { getScaleDegreeColors } from '../../lib/music/colors';
 import { SCALES } from '../../lib/music/scales';
+import type { ChordQuality } from '../../lib/music/progressions';
 
 type LabelMode = 'degree' | 'letters';
 type ColorMode = 'mono' | 'color';
@@ -10,6 +11,13 @@ type ScaleId = keyof typeof SCALES;
 type ViewMode = 'scale' | 'triads' | 'tetrads';
 type RootString = 6 | 5 | 4;
 type Voicing = 'root' | '1st' | '2nd' | '3rd';
+
+type Marker = {
+  stringIndex: number;
+  fret: number;
+  pc: number;
+  degree: number;
+};
 
 type Props = {
   openPcs: number[];
@@ -26,6 +34,10 @@ type Props = {
   usePositionMode: boolean; // whether to use CAGED position filtering
   rootString: RootString;
   voicing: Voicing;
+  chordQualities: ChordQuality[];
+  currentStep: number | null;
+  onStepChange: (step: number | null) => void;
+  progressionName: string | null;
 };
 
 const MONO_ROOT = '#f5f7fa';
@@ -43,6 +55,137 @@ const PROGRESSION_COLORS = [
   '#a29bfe', // vii/VII - purple
 ];
 
+/**
+ * Find complete chord shapes where the bass note matches the target inversion.
+ * Returns ONE optimal shape per bass note position (not all possible notes).
+ */
+function findChordShapesForInversion(
+  markers: Marker[],
+  chordDegrees: number[],
+  targetBassDegree: number
+): Set<string> {
+  const validMarkerKeys = new Set<string>();
+  const numNotesNeeded = chordDegrees.length;
+
+  // Pre-build lookup Map of markers by string for O(1) access
+  const markersByString = new Map<number, Marker[]>();
+  const chordDegreeSet = new Set(chordDegrees);
+  for (const m of markers) {
+    if (chordDegreeSet.has(m.degree)) {
+      const list = markersByString.get(m.stringIndex);
+      if (list) {
+        list.push(m);
+      } else {
+        markersByString.set(m.stringIndex, [m]);
+      }
+    }
+  }
+
+  // Track which bass fret positions we've already found a shape for
+  const usedBassFrets = new Set<number>();
+
+  // Find all bass note positions for this inversion
+  const bassMarkers = markers.filter(m => m.degree === targetBassDegree);
+
+  // Sort by fret to process in order (low to high)
+  bassMarkers.sort((a, b) => a.fret - b.fret);
+
+  for (const bassMarker of bassMarkers) {
+    // Skip if we already have a shape starting at this fret
+    if (usedBassFrets.has(bassMarker.fret)) continue;
+
+    // Try to build a shape starting from this bass note
+    const shape = tryBuildShapeFromBass(
+      markersByString,
+      chordDegrees,
+      bassMarker,
+      numNotesNeeded
+    );
+
+    if (shape) {
+      // Mark this bass fret as used
+      usedBassFrets.add(bassMarker.fret);
+
+      // Add all markers in this shape
+      for (const m of shape) {
+        validMarkerKeys.add(`${m.stringIndex}:${m.fret}`);
+      }
+    }
+  }
+
+  return validMarkerKeys;
+}
+
+/**
+ * Try to build a chord shape starting from a specific bass note.
+ * The bass note defines the lowest string; remaining notes go on higher strings.
+ */
+function tryBuildShapeFromBass(
+  markersByString: Map<number, Marker[]>,
+  chordDegrees: number[],
+  bassMarker: Marker,
+  numStrings: number
+): Marker[] | null {
+  // The bass marker defines the lowest string
+  const lowestStringIdx = bassMarker.stringIndex;
+
+  // Need (numStrings - 1) more strings above the bass
+  // stringIndex decreases as we go to higher-pitched strings
+  const stringIndices = [lowestStringIdx];
+  for (let i = 1; i < numStrings; i++) {
+    const nextString = lowestStringIdx - i;
+    if (nextString < 0) return null; // Not enough strings above
+    stringIndices.push(nextString);
+  }
+
+  // Build shape starting with bass marker
+  const shape: Marker[] = [bassMarker];
+  const usedDegrees = new Set<number>([bassMarker.degree]);
+  let minFret = bassMarker.fret;
+  let maxFret = bassMarker.fret;
+
+  // Fill remaining strings (from 2nd lowest to highest)
+  for (let i = 1; i < stringIndices.length; i++) {
+    const stringIdx = stringIndices[i];
+    const stringMarkers = markersByString.get(stringIdx) ?? [];
+
+    // Find chord tones on this string within fret span
+    const candidates: Marker[] = [];
+    for (const m of stringMarkers) {
+      if (!chordDegrees.includes(m.degree)) continue;
+      const newMin = Math.min(minFret, m.fret);
+      const newMax = Math.max(maxFret, m.fret);
+      if (newMax - newMin <= 4) { // 4-fret span
+        candidates.push(m);
+      }
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Prefer unused degrees, then closest to existing fret range
+    candidates.sort((a, b) => {
+      // Prioritize unused degrees
+      const aNew = !usedDegrees.has(a.degree) ? 0 : 1;
+      const bNew = !usedDegrees.has(b.degree) ? 0 : 1;
+      if (aNew !== bNew) return aNew - bNew;
+
+      // Then prefer notes closer to the center of the shape
+      const center = (minFret + maxFret) / 2;
+      return Math.abs(a.fret - center) - Math.abs(b.fret - center);
+    });
+
+    const best = candidates[0];
+    shape.push(best);
+    usedDegrees.add(best.degree);
+    minFret = Math.min(minFret, best.fret);
+    maxFret = Math.max(maxFret, best.fret);
+  }
+
+  // Verify we have all chord tones
+  const hasAllTones = chordDegrees.every(d => usedDegrees.has(d));
+  return hasAllTones ? shape : null;
+}
+
 export default function Fretboard({
   openPcs,
   maxFrets,
@@ -58,7 +201,12 @@ export default function Fretboard({
   usePositionMode,
   rootString,
   voicing,
+  chordQualities,
+  currentStep,
+  onStepChange,
+  progressionName: _progressionName,
 }: Props) {
+  void _progressionName; // Reserved for future use (e.g., displaying progression title)
   const strings = openPcs.length;
   const isCompact = maxFrets <= 12;
   const fretWidth = isCompact ? 68 : 48;
@@ -121,18 +269,19 @@ export default function Fretboard({
     ? new Set(progressionNumerals.map((chordRoot) => getChordDegrees(chordRoot)[0]))
     : null;
 
-  // Create a mapping from marker degree to which chord in the progression it belongs to
-  const degreeToProgressionChord = isProgressionMode
+  // Create a mapping from marker degree to which chords in the progression it belongs to
+  // A degree can belong to multiple chords (shared tones are common in diatonic harmony)
+  const degreeToProgressionChords = isProgressionMode
     ? (() => {
-        const map = new Map<number, number>();
+        const map = new Map<number, number[]>();
         progressionNumerals.forEach((chordRoot, chordIndex) => {
           const degrees = getChordDegrees(chordRoot);
 
-          // Map each degree to its chord index (prioritize root notes)
+          // Map each degree to all chords it belongs to
           degrees.forEach((deg) => {
-            // Only set if not already set (first chord takes priority)
-            if (!map.has(deg)) {
-              map.set(deg, chordIndex);
+            const existing = map.get(deg) ?? [];
+            if (!existing.includes(chordIndex)) {
+              map.set(deg, [...existing, chordIndex]);
             }
           });
         });
@@ -141,7 +290,7 @@ export default function Fretboard({
     : null;
 
   // Find the position (fret range) for position-based display
-  const positionFretRange = (() => {
+  const positionFretRange = useMemo(() => {
     if (!usePositionMode || !isProgressionMode || !progressionNumerals) {
       return null;
     }
@@ -174,10 +323,10 @@ export default function Fretboard({
     const maxFret = minFret + fretSpan;
 
     return { minFret, maxFret };
-  })();
+  }, [usePositionMode, isProgressionMode, progressionNumerals, strings, rootString, markers]);
 
   // Filter markers for triads/tetrads or progressions
-  const filteredMarkers = (() => {
+  const filteredMarkers = useMemo(() => {
     if (isProgressionMode && progressionChordDegrees) {
       // In progression mode, show all chord tones from all chords in progression
       const uniqueDegrees = [...new Set(progressionChordDegrees)];
@@ -193,14 +342,35 @@ export default function Fretboard({
       return filtered;
     }
     if ((viewMode === 'triads' || viewMode === 'tetrads') && triadDegrees) {
-      return markers.filter((m) => triadDegrees.includes(m.degree));
+      // First filter to just chord tones
+      let filtered = markers.filter((m) => triadDegrees.includes(m.degree));
+
+      // Apply inversion filtering based on voicing
+      // triadDegrees is in order: [root, 3rd, 5th] for triads, [root, 3rd, 5th, 7th] for tetrads
+      const bassIndex =
+        voicing === 'root' ? 0 :
+        voicing === '1st' ? 1 :
+        voicing === '2nd' ? 2 : 3;
+
+      const targetBassDegree = triadDegrees[bassIndex];
+
+      if (targetBassDegree !== undefined) {
+        const validShapeKeys = findChordShapesForInversion(
+          filtered,
+          triadDegrees,
+          targetBassDegree
+        );
+        filtered = filtered.filter(m => validShapeKeys.has(`${m.stringIndex}:${m.fret}`));
+      }
+
+      return filtered;
     }
     return markers;
-  })();
+  }, [isProgressionMode, progressionChordDegrees, markers, positionFretRange, viewMode, triadDegrees, voicing]);
 
   // In position mode (when positionFretRange is active), compute specific bass markers
   // Each chord in the progression gets exactly one bass note marker (the lowest-pitched one in the box)
-  const positionBassMarkerKeys: Set<string> | null = (() => {
+  const positionBassMarkerKeys = useMemo((): Set<string> | null => {
     if (!isProgressionMode || !positionFretRange || !progressionNumerals) {
       return null;
     }
@@ -239,11 +409,12 @@ export default function Fretboard({
     }
 
     return bassKeys;
-  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isProgressionMode, positionFretRange, progressionNumerals, filteredMarkers, intervals.length, useTetrads, voicing]);
 
   // In position mode, identify the key root anchor marker (degree 1 on the selected root string)
   // This marker gets a special halo effect
-  const keyRootAnchorKey: string | null = (() => {
+  const keyRootAnchorKey = useMemo((): string | null => {
     if (!isProgressionMode || !positionFretRange) {
       return null;
     }
@@ -259,7 +430,7 @@ export default function Fretboard({
     );
 
     return anchorMarker ? `${anchorMarker.stringIndex}:${anchorMarker.fret}` : null;
-  })();
+  }, [isProgressionMode, positionFretRange, strings, rootString, filteredMarkers]);
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
   const stringY = (sIdx: number) => padding + (strings - 1 - sIdx) * stringGap;
@@ -269,7 +440,7 @@ export default function Fretboard({
   const indicatorY = boardHeight + 12;
   const inlayFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 
-  return (
+  const svgElement = (
     <svg width="100%" viewBox={`0 0 ${width} ${totalHeight}`} role="img" aria-label="Guitar fretboard">
       {/* board background */}
       <rect x={0} y={0} width={width} height={boardHeight} fill="#050505" rx={14} stroke="rgba(255, 255, 255, 0.2)" />
@@ -352,16 +523,23 @@ export default function Fretboard({
         // Multi-chord progressions (2+ chords) use progression colors in Color mode
         // Single-chord voicing mode uses degree colors in Color mode
         const isMultiChordProgression = progressionNumerals !== null && progressionNumerals.length > 1;
+        // Get all chords this degree belongs to (shared tones belong to multiple chords)
+        const markerChordIndices = degreeToProgressionChords?.get(marker.degree) ?? [0];
+        const markerChordIndex = markerChordIndices[0]; // Use first chord for base color
         let fill: string;
         if (colorMode === 'mono') {
           fill = isRoot ? MONO_ROOT : MONO_TONE;
-        } else if (isMultiChordProgression && degreeToProgressionChord) {
+        } else if (isMultiChordProgression && degreeToProgressionChords) {
           // Use progression chord colors (only for real multi-chord progressions in Color mode)
-          const chordIndex = degreeToProgressionChord.get(marker.degree) ?? 0;
-          fill = PROGRESSION_COLORS[chordIndex % PROGRESSION_COLORS.length];
+          fill = PROGRESSION_COLORS[markerChordIndex % PROGRESSION_COLORS.length];
         } else {
           fill = degreeColors[Math.min(Math.max(marker.degree, 1) - 1, degreeColors.length - 1)];
         }
+
+        // Determine opacity for step mode - dim non-active chords
+        // A marker is active if ANY of the chords it belongs to is the current step
+        const isActiveInStepMode = currentStep === null || markerChordIndices.includes(currentStep);
+        const markerOpacity = isActiveInStepMode ? 1 : 0.2;
 
         const label =
           labelMode === 'degree'
@@ -390,7 +568,7 @@ export default function Fretboard({
         const radius = hasThickStroke ? 12 : 11;
 
         return (
-          <g key={`m-${marker.stringIndex}-${marker.fret}`}>
+          <g key={`m-${marker.stringIndex}-${marker.fret}`} opacity={markerOpacity}>
             {/* Halo for key root anchor in position mode */}
             {isKeyRootAnchor && (
               <circle
@@ -423,5 +601,91 @@ export default function Fretboard({
         );
       })}
     </svg>
+  );
+
+  // Build legend data for multi-chord progressions
+  const legendData = isProgressionMode && progressionNumerals && progressionNumerals.length > 1
+    ? progressionNumerals.map((chordRoot, index) => {
+        const quality = chordQualities[chordRoot - 1] ?? 'maj';
+        const chordRootPc = normalizePc(rootPc + intervals[chordRoot - 1]);
+        const chordName = getChordName(chordRootPc, quality, preferSharps);
+
+        // Build Roman numeral with proper case
+        const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+        let romanNumeral = numerals[chordRoot - 1] ?? String(chordRoot);
+        if (quality === 'min' || quality === 'dim' || quality === 'min7' || quality === 'dim7' || quality === 'half-dim' || quality === 'minMaj7') {
+          romanNumeral = romanNumeral.toLowerCase();
+        }
+
+        // Add quality symbol
+        let qualitySymbol = '';
+        if (quality === 'dim' || quality === 'dim7') qualitySymbol = '°';
+        else if (quality === 'aug' || quality === 'aug7') qualitySymbol = '+';
+        else if (quality === 'half-dim') qualitySymbol = 'ø';
+
+        return {
+          chordRoot,
+          color: PROGRESSION_COLORS[index % PROGRESSION_COLORS.length],
+          romanNumeral,
+          qualitySymbol,
+          chordName,
+          index,
+        };
+      })
+    : null;
+
+  const handlePrevStep = useCallback(() => {
+    if (!progressionNumerals) return;
+    if (currentStep === null) {
+      onStepChange(progressionNumerals.length - 1);
+    } else if (currentStep === 0) {
+      onStepChange(null);
+    } else {
+      onStepChange(currentStep - 1);
+    }
+  }, [progressionNumerals, currentStep, onStepChange]);
+
+  const handleNextStep = useCallback(() => {
+    if (!progressionNumerals) return;
+    if (currentStep === null) {
+      onStepChange(0);
+    } else if (currentStep >= progressionNumerals.length - 1) {
+      onStepChange(null);
+    } else {
+      onStepChange(currentStep + 1);
+    }
+  }, [progressionNumerals, currentStep, onStepChange]);
+
+  const handleShowAll = useCallback(() => {
+    onStepChange(null);
+  }, [onStepChange]);
+
+  return (
+    <div className="fretboard-container">
+      {svgElement}
+      {legendData && (
+        <div className="progression-legend">
+          <div className="legend-chords">
+            {legendData.map((chord, i) => (
+              <div
+                key={chord.chordRoot}
+                className={`legend-chord ${currentStep === i ? 'legend-chord--active' : ''} ${currentStep !== null && currentStep !== i ? 'legend-chord--dimmed' : ''}`}
+                onClick={() => onStepChange(currentStep === i ? null : i)}
+              >
+                <span className="legend-dot" style={{ background: chord.color }} />
+                <span className="legend-numeral">{chord.romanNumeral}{chord.qualitySymbol}</span>
+                <span className="legend-name">({chord.chordName})</span>
+                {i < legendData.length - 1 && <span className="legend-arrow">→</span>}
+              </div>
+            ))}
+          </div>
+          <div className="step-controls">
+            <button className="step-btn" onClick={handlePrevStep} title="Previous chord">◀</button>
+            <button className="step-btn step-btn--all" onClick={handleShowAll} title="Show all chords">All</button>
+            <button className="step-btn" onClick={handleNextStep} title="Next chord">▶</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
