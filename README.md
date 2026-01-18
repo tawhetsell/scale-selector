@@ -32,10 +32,10 @@ Visualization options include:
 
 ## Screenshots
 
-![Screenshot 1](docs/screenshots/shot_1.png)
-![Screenshot 2](docs/screenshots/shot_2.png)
-![Screenshot 3](docs/screenshots/shot_3.png)
-![Screenshot 4](docs/screenshots/shot_4.png)
+![Screenshot 1](screenshots/shot_1.png)
+![Screenshot 2](screenshots/shot_2.png)
+![Screenshot 3](screenshots/shot_3.png)
+![Screenshot 4](screenshots/shot_4.png)
 
 ## Tech
 
