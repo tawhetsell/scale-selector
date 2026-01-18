@@ -1,0 +1,333 @@
+.piano-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.piano-keyboard {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.piano-keys {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 140px;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.piano-white-keys {
+  display: flex;
+  width: 100%;
+  gap: 2px;
+}
+
+.piano-black-keys {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 58%;
+  pointer-events: none;
+}
+
+/* ========================================
+   WHITE KEYS - Soft ivory/off-white surface
+   ======================================== */
+.piano-key--white {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  /* Soft off-white with subtle vertical gradient (brighter at top) */
+  background: linear-gradient(180deg,
+    rgba(220, 218, 213, 0.95) 0%,
+    rgba(195, 192, 187, 0.9) 100%
+  );
+  /* Soft border */
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0 0 6px 6px;
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 10px;
+  transition: all 0.1s ease;
+  /* Subtle inner shadow for depth */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.04),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.piano-key--white:hover {
+  background: linear-gradient(180deg,
+    rgba(230, 228, 223, 0.95) 0%,
+    rgba(205, 202, 197, 0.9) 100%
+  );
+}
+
+/* Active white key - outline first, subtle tint */
+.piano-key--white.piano-key--active {
+  background: linear-gradient(180deg,
+    rgba(220, 218, 213, 0.85) 0%,
+    rgba(195, 192, 187, 0.8) 100%
+  );
+  border: 2px solid var(--key-color, rgba(255, 255, 255, 0.6));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px var(--key-color, rgba(255, 255, 255, 0.2)),
+    inset 0 0 20px color-mix(in srgb, var(--key-color, #888) 25%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Root white key - stronger outline + glow */
+.piano-key--white.piano-key--root {
+  border: 2px solid var(--key-color, rgba(255, 255, 255, 0.8));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 2px var(--key-color, rgba(255, 255, 255, 0.3)),
+    inset 0 0 24px color-mix(in srgb, var(--key-color, #888) 30%, transparent),
+    0 0 16px color-mix(in srgb, var(--key-color, #fff) 25%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   BLACK KEYS - Layered dark surface
+   ======================================== */
+.piano-key--black {
+  width: 4.5%;
+  height: 100%;
+  /* Layered dark gradient with subtle lighter top */
+  background: linear-gradient(180deg,
+    #2a2a2a 0%,
+    #1a1a1a 40%,
+    #111 100%
+  );
+  /* Edge highlights for raised look */
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  pointer-events: auto;
+  z-index: 2;
+  transition: all 0.1s ease;
+  /* Subtle depth shadows */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset -1px 0 0 rgba(255, 255, 255, 0.04),
+    inset 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+.piano-key--black:hover {
+  background: linear-gradient(180deg,
+    #333 0%,
+    #222 40%,
+    #181818 100%
+  );
+}
+
+/* Active black key - outline first, subtle tint */
+.piano-key--black.piano-key--active {
+  background: linear-gradient(180deg,
+    #2a2a2a 0%,
+    #1f1f1f 40%,
+    #161616 100%
+  );
+  border: 2px solid var(--key-color, rgba(255, 255, 255, 0.5));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 16px color-mix(in srgb, var(--key-color, #666) 30%, transparent),
+    0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Root black key - stronger outline + glow */
+.piano-key--black.piano-key--root {
+  border: 2px solid var(--key-color, rgba(255, 255, 255, 0.7));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 20px color-mix(in srgb, var(--key-color, #666) 35%, transparent),
+    0 0 12px color-mix(in srgb, var(--key-color, #fff) 20%, transparent),
+    0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================
+    MONO MODE - Dark keys + white outline
+    (Darker base, lighter active tones)
+   ======================================== */
+
+/* Mono base: darker keys (selected tones become lighter) */
+[data-color-mode="mono"] .piano-key--white {
+  background: linear-gradient(180deg,
+    #9a9a9a 0%,
+    #757575 100%
+  );
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.22),
+    0 2px 5px rgba(0, 0, 0, 0.42);
+}
+
+/* Mono: Active white key - lighter fill + white outline + glow */
+[data-color-mode="mono"] .piano-key--white.piano-key--active {
+  background: linear-gradient(180deg,
+    #d2d2d2 0%,
+    #b8b8b8 100%
+  );
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.92),
+    0 6px 14px rgba(255, 255, 255, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.38);
+}
+
+/* Mono: Root white key - slightly brighter + stronger outline/glow */
+[data-color-mode="mono"] .piano-key--white.piano-key--root {
+  background: linear-gradient(180deg,
+    #e1e1e1 0%,
+    #c9c9c9 100%
+  );
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 255, 255, 0.98),
+    0 6px 18px rgba(255, 255, 255, 0.32),
+    0 10px 30px rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.16),
+    0 2px 6px rgba(0, 0, 0, 0.38);
+}
+
+/* Mono: Active black key - slightly lighter + white outline (no border gap) */
+[data-color-mode="mono"] .piano-key--black.piano-key--active {
+  background: linear-gradient(180deg,
+    #3a3a3a 0%,
+    #222 40%,
+    #151515 100%
+  );
+  border: 1px solid transparent;
+  border-top: none;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.92),
+    0 6px 14px rgba(255, 255, 255, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset -1px 0 0 rgba(255, 255, 255, 0.05),
+    inset 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 3px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* Mono: Root black key - stronger outline/glow */
+[data-color-mode="mono"] .piano-key--black.piano-key--root {
+  background: linear-gradient(180deg,
+    #464646 0%,
+    #2a2a2a 40%,
+    #1b1b1b 100%
+  );
+  border: 1px solid transparent;
+  border-top: none;
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 255, 255, 0.98),
+    0 6px 18px rgba(255, 255, 255, 0.28),
+    0 10px 30px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset -1px 0 0 rgba(255, 255, 255, 0.05),
+    inset 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 3px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* Mono: Label contrast on active keys */
+[data-color-mode="mono"] .piano-key--active .piano-key__label {
+  font-weight: 600;
+}
+
+[data-color-mode="mono"] .piano-key--black.piano-key--active .piano-key__label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ========================================
+   BLACK KEY POSITIONS (unchanged layout)
+   ======================================== */
+/* 15 white keys total (C3-C5): each white key = 100/15 = 6.667% */
+/* Black keys sit between white keys, offset by half black key width */
+
+/* Octave 3 (white keys 0-6) */
+.piano-key--black[data-note="C#"][data-octave="3"] { left: calc(6.667% * 1 - 2.25%); }
+.piano-key--black[data-note="D#"][data-octave="3"] { left: calc(6.667% * 2 - 2.25%); }
+.piano-key--black[data-note="F#"][data-octave="3"] { left: calc(6.667% * 4 - 2.25%); }
+.piano-key--black[data-note="G#"][data-octave="3"] { left: calc(6.667% * 5 - 2.25%); }
+.piano-key--black[data-note="A#"][data-octave="3"] { left: calc(6.667% * 6 - 2.25%); }
+
+/* Octave 4 (white keys 7-13) */
+.piano-key--black[data-note="C#"][data-octave="4"] { left: calc(6.667% * 8 - 2.25%); }
+.piano-key--black[data-note="D#"][data-octave="4"] { left: calc(6.667% * 9 - 2.25%); }
+.piano-key--black[data-note="F#"][data-octave="4"] { left: calc(6.667% * 11 - 2.25%); }
+.piano-key--black[data-note="G#"][data-octave="4"] { left: calc(6.667% * 12 - 2.25%); }
+.piano-key--black[data-note="A#"][data-octave="4"] { left: calc(6.667% * 13 - 2.25%); }
+
+/* ========================================
+   LABELS - Minimal, only on active keys
+   ======================================== */
+.piano-key__label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(30, 30, 30, 0.7);
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Active key labels - slightly more prominent */
+.piano-key--active .piano-key__label {
+  color: rgba(20, 20, 20, 0.85);
+  font-weight: 600;
+}
+
+/* Black key labels */
+.piano-key--black .piano-key__label {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 8px;
+  text-shadow: none;
+}
+
+.piano-key--black.piano-key--active .piano-key__label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 720px) {
+  .piano-keys {
+    height: 110px;
+  }
+
+  .piano-key__label {
+    font-size: 7px;
+  }
+
+  .piano-key--black .piano-key__label {
+    font-size: 6px;
+  }
+
+  .piano-key--white {
+    padding-bottom: 8px;
+    border-radius: 0 0 5px 5px;
+  }
+
+  .piano-key--black {
+    padding-bottom: 6px;
+    border-radius: 0 0 3px 3px;
+  }
+}

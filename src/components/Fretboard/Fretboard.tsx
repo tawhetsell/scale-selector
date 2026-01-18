@@ -216,9 +216,10 @@ export default function Fretboard({
   const nutX = padding + openSpacing;
   const stringsEnd = nutX + maxFrets * fretWidth;
   const width = stringsEnd + padding;
-  const boardHeight = padding * 2 + (strings - 1) * stringGap;
-  const bottomMargin = 26;
-  const totalHeight = boardHeight + bottomMargin;
+  const stringAreaHeight = padding * 2 + (strings - 1) * stringGap;
+  const inlayGutter = 16; // Space below strings for fret marker dots
+  const boardHeight = stringAreaHeight + inlayGutter;
+  const totalHeight = boardHeight;
 
   const markers = computeFretMap(openPcs, maxFrets, rootPc, intervals);
   const degreeColors = getScaleDegreeColors(scaleId);
@@ -437,7 +438,9 @@ export default function Fretboard({
   const stringStartX = padding;
   const stringEndX = stringsEnd;
 
-  const indicatorY = boardHeight + 12;
+  // Inlay dots centered between visual grid bottom (where fret lines end) and panel bottom
+  const gridVisualBottom = stringAreaHeight - padding + 16; // fret lines extend 16px below lowest string
+  const indicatorY = (gridVisualBottom + boardHeight) / 2;
   const inlayFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 
   const svgElement = (
@@ -463,19 +466,19 @@ export default function Fretboard({
         x={nutX - 7}
         y={padding - 16}
         width={7}
-        height={boardHeight - padding * 2 + 32}
+        height={stringAreaHeight - padding * 2 + 32}
         fill="#ffffff"
         opacity={0.8}
       />
 
-      {/* frets */}
+      {/* frets - stay within string area, don't extend into marker lane */}
       {Array.from({ length: maxFrets + 1 }).map((_, f) => (
         <line
           key={`f-${f}`}
           x1={fretX(f)}
           y1={padding - 16}
           x2={fretX(f)}
-          y2={boardHeight - padding + 16}
+          y2={stringAreaHeight - padding + 16}
           stroke={f % 12 === 0 ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.2)'}
           strokeWidth={f % 12 === 0 ? 1.8 : 1}
         />

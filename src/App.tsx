@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import Fretboard from './components/Fretboard/Fretboard';
+import PianoKeyboard from './components/PianoKeyboard/PianoKeyboard';
 import { nameToPc } from './lib/music/notes';
 import { SCALES } from './lib/music/scales';
 import { getScaleTriads, getScaleTetrads } from './lib/music/chords';
@@ -52,6 +53,7 @@ function shortenScaleName(name: string): string {
 type ViewMode = 'scale' | 'triads' | 'tetrads';
 type RootString = 6 | 5 | 4;
 type Voicing = 'root' | '1st' | '2nd' | '3rd';
+type VisualMode = 'guitar' | 'piano';
 
 // Static scale options - computed once at module load (hide Ionian since Major is equivalent)
 const SCALE_OPTIONS = Object.values(SCALES).filter((s) => s.id !== 'ionian');
@@ -61,8 +63,8 @@ export default function App() {
   const [scaleId, setScaleId] = useState<keyof typeof SCALES>('major');
   const [rootName, setRootName] = useState('E');
   const [maxFrets, setMaxFrets] = useState(12);
-  const [labelMode, setLabelMode] = useState<'degree' | 'letters'>('degree');
-  const [colorMode, setColorMode] = useState<'mono' | 'color'>('mono');
+  const [labelMode, setLabelMode] = useState<'degree' | 'letters'>('letters');
+  const [colorMode, setColorMode] = useState<'mono' | 'color'>('color');
   const [viewMode, setViewMode] = useState<ViewMode>('scale');
   const [chordRootDegree, setChordRootDegree] = useState(1);
   const [selectedProgression, setSelectedProgression] = useState<string>('scale');
@@ -70,6 +72,7 @@ export default function App() {
   const [voicing, setVoicing] = useState<Voicing>('root');
   const [dropTuning, setDropTuning] = useState(false);
   const [currentStep, setCurrentStep] = useState<number | null>(null);
+  const [visualMode, setVisualMode] = useState<VisualMode>('guitar');
 
   const openPcs = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
@@ -169,9 +172,9 @@ export default function App() {
       </header>
 
       <section className="panel">
-        {/* Row 1: SCALE, ROOT, STRINGS, FRETS */}
+        {/* Row 1: SCALE, ROOT, STRINGS */}
         <label className="control">
-          <span className="control__label">SCALE</span>
+          <span className="control__label">SCALES</span>
           <select
             value={scaleId}
             onChange={(e) => setScaleId(e.target.value as keyof typeof SCALES)}
@@ -206,18 +209,7 @@ export default function App() {
           </select>
         </label>
 
-        <label className="control">
-          <span className="control__label">FRETS</span>
-          <select value={maxFrets} onChange={(e) => setMaxFrets(Number(e.target.value))}>
-            {[12, 24].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* Row 2: CHORDS, DEGREE, LABEL, COLOR */}
+        {/* Row 2: CHORDS, DEGREE */}
         <label className="control">
           <span className="control__label">CHORDS</span>
           <select
@@ -247,31 +239,9 @@ export default function App() {
           </select>
         </label>
 
-        <label className="control">
-          <span className="control__label">LABEL</span>
-          <select
-            value={labelMode}
-            onChange={(e) => setLabelMode(e.target.value as 'degree' | 'letters')}
-          >
-            <option value="degree">Numbers</option>
-            <option value="letters">Letters</option>
-          </select>
-        </label>
-
-        <label className="control">
-          <span className="control__label">COLOR</span>
-          <select
-            value={colorMode}
-            onChange={(e) => setColorMode(e.target.value as 'mono' | 'color')}
-          >
-            <option value="mono">Mono</option>
-            <option value="color">Color</option>
-          </select>
-        </label>
-
         {/* Row 3: PROGRESSION, ROOT STRING */}
         <label className="control">
-          <span className="control__label">PROG</span>
+          <span className="control__label">PROGS</span>
           <select
             value={selectedProgression}
             onChange={(e) => setSelectedProgression(e.target.value)}
@@ -287,7 +257,7 @@ export default function App() {
         </label>
 
         <label className="control">
-          <span className="control__label">ROOT STR</span>
+          <span className="control__label">ROOTSTR</span>
           <select
             value={rootString}
             onChange={(e) => setRootString(Number(e.target.value) as RootString)}
@@ -300,7 +270,7 @@ export default function App() {
         </label>
 
         <label className="control">
-          <span className="control__label">VOICING</span>
+          <span className="control__label">VOICE</span>
           <select
             value={voicing}
             onChange={(e) => setVoicing(e.target.value as Voicing)}
@@ -312,47 +282,188 @@ export default function App() {
             {viewMode === 'tetrads' && <option value="3rd">3rd Inv</option>}
           </select>
         </label>
-
-        <label className="control">
-          <span className="control__label">DROP</span>
-          <select
-            value={dropTuning ? 'on' : 'off'}
-            onChange={(e) => setDropTuning(e.target.value === 'on')}
-          >
-            <option value="off">Off</option>
-            <option value="on">Drop {strings}</option>
-          </select>
-        </label>
       </section>
 
       <section className="stage">
         <div className="stage__frame">
-          <Fretboard
-            openPcs={openPcs}
-            maxFrets={maxFrets}
-            rootPc={rootPc}
-            intervals={scale.intervals}
-            scaleId={scaleId}
-            labelMode={labelMode}
-            colorMode={colorMode}
-            preferSharps={true}
-            viewMode={canShowTriads ? viewMode : 'scale'}
-            triadDegrees={canShowTriads && activeChordDegrees ? activeChordDegrees : null}
-            progressionNumerals={
-              isProgressionActive && activeProgression
-                ? activeProgression.numerals
-                : isSingleChordVoicingMode
-                ? [chordRootDegree] // Synthetic single-chord "progression"
-                : null
-            }
-            usePositionMode={isProgressionActive}
-            rootString={rootString}
-            voicing={voicing}
-            chordQualities={chordQualities}
-            currentStep={currentStep}
-            onStepChange={setCurrentStep}
-            progressionName={isProgressionActive ? selectedProgression : null}
-          />
+          <div className="stage__visualization">
+            {visualMode === 'guitar' ? (
+              <Fretboard
+                openPcs={openPcs}
+                maxFrets={maxFrets}
+                rootPc={rootPc}
+                intervals={scale.intervals}
+                scaleId={scaleId}
+                labelMode={labelMode}
+                colorMode={colorMode}
+                preferSharps={true}
+                viewMode={canShowTriads ? viewMode : 'scale'}
+                triadDegrees={canShowTriads && activeChordDegrees ? activeChordDegrees : null}
+                progressionNumerals={
+                  isProgressionActive && activeProgression
+                    ? activeProgression.numerals
+                    : isSingleChordVoicingMode
+                    ? [chordRootDegree] // Synthetic single-chord "progression"
+                    : null
+                }
+                usePositionMode={isProgressionActive}
+                rootString={rootString}
+                voicing={voicing}
+                chordQualities={chordQualities}
+                currentStep={currentStep}
+                onStepChange={setCurrentStep}
+                progressionName={isProgressionActive ? selectedProgression : null}
+              />
+            ) : (
+              <PianoKeyboard
+                rootPc={rootPc}
+                intervals={scale.intervals}
+                scaleId={scaleId}
+                labelMode={labelMode}
+                colorMode={colorMode}
+                preferSharps={true}
+                viewMode={canShowTriads ? viewMode : 'scale'}
+                triadDegrees={canShowTriads && activeChordDegrees ? activeChordDegrees : null}
+                progressionNumerals={
+                  isProgressionActive && activeProgression
+                    ? activeProgression.numerals
+                    : isSingleChordVoicingMode
+                    ? [chordRootDegree]
+                    : null
+                }
+                chordQualities={chordQualities}
+                currentStep={currentStep}
+                onStepChange={setCurrentStep}
+                voicing={voicing}
+              />
+            )}
+          </div>
+          <div className="stage__footer">
+            <div
+              className="visual-toggle"
+              role="radiogroup"
+              aria-label="Visualization mode"
+            >
+              <button
+                className={`visual-toggle__btn ${visualMode === 'guitar' ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setVisualMode('guitar')}
+                aria-checked={visualMode === 'guitar'}
+                aria-label="Guitar fretboard view"
+                role="radio"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <rect x="4" y="2" width="16" height="20" rx="2"/>
+                  <line x1="4" y1="7" x2="20" y2="7"/>
+                  <line x1="8" y1="2" x2="8" y2="22"/>
+                  <line x1="12" y1="2" x2="12" y2="22"/>
+                  <line x1="16" y1="2" x2="16" y2="22"/>
+                  <circle cx="12" cy="14" r="2" fill="currentColor" stroke="none"/>
+                </svg>
+              </button>
+              <button
+                className={`visual-toggle__btn ${visualMode === 'piano' ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setVisualMode('piano')}
+                aria-checked={visualMode === 'piano'}
+                aria-label="Piano keyboard view"
+                role="radio"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <rect x="2" y="4" width="20" height="16" rx="1"/>
+                  <line x1="6" y1="4" x2="6" y2="20"/>
+                  <line x1="10" y1="4" x2="10" y2="20"/>
+                  <line x1="14" y1="4" x2="14" y2="20"/>
+                  <line x1="18" y1="4" x2="18" y2="20"/>
+                  <rect x="4" y="4" width="3" height="9" fill="currentColor" stroke="none"/>
+                  <rect x="11" y="4" width="3" height="9" fill="currentColor" stroke="none"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Color mode">
+              <button
+                className={`visual-toggle__btn ${colorMode === 'color' ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setColorMode('color')}
+                aria-checked={colorMode === 'color'}
+                aria-label="Color"
+                role="radio"
+              >
+                Color
+              </button>
+              <button
+                className={`visual-toggle__btn ${colorMode === 'mono' ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setColorMode('mono')}
+                aria-checked={colorMode === 'mono'}
+                aria-label="Monochrome"
+                role="radio"
+                disabled={isProgressionActive}
+              >
+                Mono
+              </button>
+            </div>
+
+            <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Label mode">
+              <button
+                className={`visual-toggle__btn ${labelMode === 'letters' ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setLabelMode('letters')}
+                aria-checked={labelMode === 'letters'}
+                aria-label="Label as letters"
+                role="radio"
+              >
+                ABC
+              </button>
+              <button
+                className={`visual-toggle__btn ${labelMode === 'degree' ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setLabelMode('degree')}
+                aria-checked={labelMode === 'degree'}
+                aria-label="Label as numbers"
+                role="radio"
+              >
+                123
+              </button>
+            </div>
+
+            <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Fretboard size">
+              <button
+                className={`visual-toggle__btn ${maxFrets === 12 ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setMaxFrets(12)}
+                aria-checked={maxFrets === 12}
+                aria-label="Half size (12 frets)"
+                role="radio"
+              >
+                Half
+              </button>
+              <button
+                className={`visual-toggle__btn ${maxFrets === 24 ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setMaxFrets(24)}
+                aria-checked={maxFrets === 24}
+                aria-label="Full size (24 frets)"
+                role="radio"
+              >
+                Full
+              </button>
+            </div>
+
+            <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Tuning">
+              <button
+                className={`visual-toggle__btn ${!dropTuning ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setDropTuning(false)}
+                aria-checked={!dropTuning}
+                aria-label="Standard tuning"
+                role="radio"
+              >
+                Tune
+              </button>
+              <button
+                className={`visual-toggle__btn ${dropTuning ? 'visual-toggle__btn--active' : ''}`}
+                onClick={() => setDropTuning(true)}
+                aria-checked={dropTuning}
+                aria-label={`Drop tuning (drop lowest string)`}
+                role="radio"
+              >
+                Drop
+              </button>
+            </div>
+          </div>
         </div>
       </section>
     </div>
