@@ -1,19 +1,23 @@
 .piano-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
 }
 
 .piano-keyboard {
   display: flex;
   justify-content: center;
   width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
 }
 
 .piano-keys {
   position: relative;
   display: flex;
   width: 100%;
-  height: 140px;
+  height: 100%;
   box-sizing: border-box;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -21,6 +25,7 @@
 .piano-white-keys {
   display: flex;
   width: 100%;
+  height: 100%;
   gap: 2px;
 }
 
@@ -70,29 +75,36 @@
   );
 }
 
-/* Active white key - outline first, subtle tint */
+/* Active white key - brighter/highlighted, NOT darker/pressed */
 .piano-key--white.piano-key--active {
   background: linear-gradient(180deg,
-    rgba(220, 218, 213, 0.85) 0%,
-    rgba(195, 192, 187, 0.8) 100%
+    rgba(245, 243, 238, 0.98) 0%,
+    rgba(225, 222, 217, 0.95) 100%
   );
-  border: 2px solid var(--key-color, rgba(255, 255, 255, 0.6));
+  border: 2px solid var(--key-color, rgba(100, 100, 100, 0.4));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.7),
     inset 0 0 0 1px var(--key-color, rgba(255, 255, 255, 0.2)),
-    inset 0 0 20px color-mix(in srgb, var(--key-color, #888) 25%, transparent),
-    0 2px 8px rgba(0, 0, 0, 0.2);
+    inset 0 0 18px color-mix(in srgb, var(--key-color, #888) 45%, transparent),
+    inset 0 0 40px color-mix(in srgb, var(--key-color, #888) 22%, transparent),
+    0 0 8px color-mix(in srgb, var(--key-color, #888) 30%, transparent),
+    0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* Root white key - stronger outline + glow */
+/* Root white key - brightest + stronger outline + glow */
 .piano-key--white.piano-key--root {
+  background: linear-gradient(180deg,
+    rgba(255, 253, 250, 1) 0%,
+    rgba(240, 238, 233, 0.98) 100%
+  );
   border: 2px solid var(--key-color, rgba(255, 255, 255, 0.8));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.8),
     inset 0 0 0 2px var(--key-color, rgba(255, 255, 255, 0.3)),
-    inset 0 0 24px color-mix(in srgb, var(--key-color, #888) 30%, transparent),
-    0 0 16px color-mix(in srgb, var(--key-color, #fff) 25%, transparent),
-    0 2px 8px rgba(0, 0, 0, 0.2);
+    inset 0 0 20px color-mix(in srgb, var(--key-color, #888) 50%, transparent),
+    inset 0 0 44px color-mix(in srgb, var(--key-color, #888) 28%, transparent),
+    0 0 14px color-mix(in srgb, var(--key-color, #fff) 30%, transparent),
+    0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 /* ========================================
@@ -135,28 +147,36 @@
   );
 }
 
-/* Active black key - outline first, subtle tint */
+/* Active black key - deep black with colored outline */
 .piano-key--black.piano-key--active {
   background: linear-gradient(180deg,
-    #2a2a2a 0%,
-    #1f1f1f 40%,
-    #161616 100%
+    rgba(18, 18, 18, 0.98) 0%,
+    rgba(8, 8, 8, 0.98) 40%,
+    rgba(0, 0, 0, 0.98) 100%
   );
   border: 2px solid var(--key-color, rgba(255, 255, 255, 0.5));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 16px color-mix(in srgb, var(--key-color, #666) 30%, transparent),
-    0 3px 8px rgba(0, 0, 0, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 14px color-mix(in srgb, var(--key-color, #666) 55%, transparent),
+    inset 0 0 32px color-mix(in srgb, var(--key-color, #666) 30%, transparent),
+    0 0 6px color-mix(in srgb, var(--key-color, #666) 25%, transparent),
+    0 3px 6px rgba(0, 0, 0, 0.5);
 }
 
-/* Root black key - stronger outline + glow */
+/* Root black key - deepest black + stronger outline + glow */
 .piano-key--black.piano-key--root {
+  background: linear-gradient(180deg,
+    rgba(14, 14, 14, 1) 0%,
+    rgba(4, 4, 4, 1) 40%,
+    rgba(0, 0, 0, 1) 100%
+  );
   border: 2px solid var(--key-color, rgba(255, 255, 255, 0.7));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 20px color-mix(in srgb, var(--key-color, #666) 35%, transparent),
-    0 0 12px color-mix(in srgb, var(--key-color, #fff) 20%, transparent),
-    0 3px 8px rgba(0, 0, 0, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 16px color-mix(in srgb, var(--key-color, #666) 60%, transparent),
+    inset 0 0 36px color-mix(in srgb, var(--key-color, #666) 35%, transparent),
+    0 0 10px color-mix(in srgb, var(--key-color, #fff) 25%, transparent),
+    0 3px 6px rgba(0, 0, 0, 0.5);
 }
 
 /* ========================================
@@ -306,13 +326,36 @@
 }
 
 /* ========================================
+   FADED STATE - Focus mode (fade inactive keys)
+   ======================================== */
+.piano-key--faded {
+  pointer-events: none;
+}
+
+.piano-key--faded .piano-key__label {
+  opacity: 0;
+}
+
+/* Faded black keys: simple transparency */
+.piano-key--black.piano-key--faded {
+  opacity: 0.16;
+}
+
+/* Faded white keys: ghosted/glass appearance */
+.piano-key--white.piano-key--faded {
+  opacity: 1;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ========================================
    RESPONSIVE
    ======================================== */
 @media (max-width: 720px) {
-  .piano-keys {
-    height: 110px;
-  }
-
   .piano-key__label {
     font-size: 7px;
   }

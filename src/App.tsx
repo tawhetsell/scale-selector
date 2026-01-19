@@ -73,6 +73,7 @@ export default function App() {
   const [dropTuning, setDropTuning] = useState(false);
   const [currentStep, setCurrentStep] = useState<number | null>(null);
   const [visualMode, setVisualMode] = useState<VisualMode>('guitar');
+  const [fadeInactiveKeys, setFadeInactiveKeys] = useState(false);
 
   const openPcs = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
@@ -335,6 +336,7 @@ export default function App() {
                 currentStep={currentStep}
                 onStepChange={setCurrentStep}
                 voicing={voicing}
+                fadeInactiveKeys={fadeInactiveKeys}
               />
             )}
           </div>
@@ -401,6 +403,29 @@ export default function App() {
               </button>
             </div>
 
+            {visualMode === 'piano' && (
+              <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Fade inactive keys">
+                <button
+                  className={`visual-toggle__btn ${!fadeInactiveKeys ? 'visual-toggle__btn--active' : ''}`}
+                  onClick={() => setFadeInactiveKeys(false)}
+                  aria-checked={!fadeInactiveKeys}
+                  aria-label="Show all keys"
+                  role="radio"
+                >
+                  All
+                </button>
+                <button
+                  className={`visual-toggle__btn ${fadeInactiveKeys ? 'visual-toggle__btn--active' : ''}`}
+                  onClick={() => setFadeInactiveKeys(true)}
+                  aria-checked={fadeInactiveKeys}
+                  aria-label="Fade non-scale keys"
+                  role="radio"
+                >
+                  Focus
+                </button>
+              </div>
+            )}
+
             <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Label mode">
               <button
                 className={`visual-toggle__btn ${labelMode === 'letters' ? 'visual-toggle__btn--active' : ''}`}
@@ -422,47 +447,51 @@ export default function App() {
               </button>
             </div>
 
-            <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Fretboard size">
-              <button
-                className={`visual-toggle__btn ${maxFrets === 12 ? 'visual-toggle__btn--active' : ''}`}
-                onClick={() => setMaxFrets(12)}
-                aria-checked={maxFrets === 12}
-                aria-label="Half size (12 frets)"
-                role="radio"
-              >
-                Half
-              </button>
-              <button
-                className={`visual-toggle__btn ${maxFrets === 24 ? 'visual-toggle__btn--active' : ''}`}
-                onClick={() => setMaxFrets(24)}
-                aria-checked={maxFrets === 24}
-                aria-label="Full size (24 frets)"
-                role="radio"
-              >
-                Full
-              </button>
-            </div>
+            {visualMode === 'guitar' && (
+              <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Fretboard size">
+                <button
+                  className={`visual-toggle__btn ${maxFrets === 12 ? 'visual-toggle__btn--active' : ''}`}
+                  onClick={() => setMaxFrets(12)}
+                  aria-checked={maxFrets === 12}
+                  aria-label="Half size (12 frets)"
+                  role="radio"
+                >
+                  Half
+                </button>
+                <button
+                  className={`visual-toggle__btn ${maxFrets === 24 ? 'visual-toggle__btn--active' : ''}`}
+                  onClick={() => setMaxFrets(24)}
+                  aria-checked={maxFrets === 24}
+                  aria-label="Full size (24 frets)"
+                  role="radio"
+                >
+                  Full
+                </button>
+              </div>
+            )}
 
-            <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Tuning">
-              <button
-                className={`visual-toggle__btn ${!dropTuning ? 'visual-toggle__btn--active' : ''}`}
-                onClick={() => setDropTuning(false)}
-                aria-checked={!dropTuning}
-                aria-label="Standard tuning"
-                role="radio"
-              >
-                Tune
-              </button>
-              <button
-                className={`visual-toggle__btn ${dropTuning ? 'visual-toggle__btn--active' : ''}`}
-                onClick={() => setDropTuning(true)}
-                aria-checked={dropTuning}
-                aria-label={`Drop tuning (drop lowest string)`}
-                role="radio"
-              >
-                Drop
-              </button>
-            </div>
+            {visualMode === 'guitar' && (
+              <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Tuning">
+                <button
+                  className={`visual-toggle__btn ${!dropTuning ? 'visual-toggle__btn--active' : ''}`}
+                  onClick={() => setDropTuning(false)}
+                  aria-checked={!dropTuning}
+                  aria-label="Standard tuning"
+                  role="radio"
+                >
+                  Tune
+                </button>
+                <button
+                  className={`visual-toggle__btn ${dropTuning ? 'visual-toggle__btn--active' : ''}`}
+                  onClick={() => setDropTuning(true)}
+                  aria-checked={dropTuning}
+                  aria-label={`Drop tuning (drop lowest string)`}
+                  role="radio"
+                >
+                  Drop
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>

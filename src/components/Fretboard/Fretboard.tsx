@@ -40,8 +40,6 @@ type Props = {
   progressionName: string | null;
 };
 
-const MONO_ROOT = '#f5f7fa';
-const MONO_TONE = '#8d949c';
 const INLAY_COLOR = '#b6bcc3';
 const STRING_COLOR = 'rgba(255, 255, 255, 0.5)';
 const STANDOUT_OUTLINE = '#ffffff';
@@ -522,7 +520,8 @@ export default function Fretboard({
         const markerChordIndex = markerChordIndices[0]; // Use first chord for base color
         let fill: string;
         if (colorMode === 'mono') {
-          fill = isRoot ? MONO_ROOT : MONO_TONE;
+          // Mono: use board background color for "outline-only" appearance while masking strings
+          fill = '#050505';
         } else if (isMultiChordProgression && degreeToProgressionChords && progressionNumerals) {
           // Color by chord's numeral (root scale degree), not by position in progression
           const chordNumeral = progressionNumerals[markerChordIndex];
@@ -542,34 +541,52 @@ export default function Fretboard({
             : pcToName(marker.pc, preferSharps);
 
         // Compute text color based on fill luminance for contrast
-        const textFill = colorMode !== 'mono' ? pickTextColor(fill) : '#121417';
+        // Mono: softened white text on transparent/dark background
+        const monoWhite = 'rgba(255,255,255,0.88)';
+        const textFill = colorMode !== 'mono' ? pickTextColor(fill) : monoWhite;
         // Subtle shadow for text readability (no stroke/outline)
         const textShadow = colorMode !== 'mono' ? 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))' : undefined;
-        const glow =
+        // Mono: subtle lift shadow for separation; Color: soft colored glow
+        const dotFilter =
           colorMode === 'mono'
-            ? 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.14))'
+            ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.55))'
             : `drop-shadow(0 0 12px ${fill}44)`;
 
-        // Determine stroke style
-        // - Bass notes and key root anchor get thick standout outline
-        // - Root notes get standout outline (medium thickness)
-        // - 2nd/3rd voicing inversions in chord mode use standout outline for readability
-        // - Otherwise use string color for outline
-        const hasThickStroke = isBassNote || isKeyRootAnchor;
+        // Determine accent target (single source of truth for both Color and Mono modes)
+        // - Scale mode: accent = key root
+        // - Chord mode (Triads/Tetrads) with Root voicing: accent = key root
+        // - Chord mode with inversion (1st/2nd/3rd): accent = inversion bass tone ONLY
         const isChordMode = viewMode === 'triads' || viewMode === 'tetrads';
-        const useStandoutOutline = hasThickStroke || isRoot || (isChordMode && (voicing === '2nd' || voicing === '3rd'));
+        const isInversion = isChordMode && voicing !== 'root';
+        const inversionBassDegree = triadDegrees?.[0]; // First degree after rotation = bass tone
+        const isInversionBass = isInversion && inversionBassDegree !== undefined && marker.degree === inversionBassDegree;
+
+        // Single accent decision used by both Color and Mono modes
+        const isAccent = isInversion ? isInversionBass : isRoot;
+
+        // Thick stroke for progression mode special markers (bass notes, key root anchor)
+        const hasThickStroke = isBassNote || isKeyRootAnchor;
+        const useStandoutOutline = hasThickStroke || isAccent;
 
         let strokeColor: string;
+        let strokeWidth: number;
         if (colorMode === 'mono') {
-          // In mono mode: root (white fill) gets gray stroke, others get light stroke
-          strokeColor = isRoot ? 'rgba(141, 148, 156, 0.8)' : 'rgba(255, 255, 255, 0.65)';
+          // Mono: accented notes (same as Color mode) get brighter/thicker ring
+          if (useStandoutOutline) {
+            strokeColor = 'rgba(255,255,255,0.98)';
+            strokeWidth = 2;
+          } else {
+            strokeColor = monoWhite;
+            strokeWidth = 1;
+          }
         } else if (useStandoutOutline) {
           strokeColor = STANDOUT_OUTLINE;
+          strokeWidth = hasThickStroke ? 3 : (isAccent ? 2.2 : 1.4);
         } else {
           // Default: use string color for outline
           strokeColor = STRING_COLOR;
+          strokeWidth = hasThickStroke ? 3 : (isAccent ? 2.2 : 1.4);
         }
-        const strokeWidth = hasThickStroke ? 3 : (isRoot ? 2.2 : 1.4);
         const radius = hasThickStroke ? 12 : 11;
 
         return (
@@ -590,7 +607,7 @@ export default function Fretboard({
               fill={fill}
               stroke={strokeColor}
               strokeWidth={strokeWidth}
-              style={{ filter: glow }}
+              style={{ filter: dotFilter }}
             />
             <text
               x={x}

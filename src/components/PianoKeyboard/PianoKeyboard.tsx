@@ -26,6 +26,7 @@ type Props = {
   currentStep: number | null;
   onStepChange: (step: number | null) => void;
   voicing: Voicing;
+  fadeInactiveKeys?: boolean;
 };
 
 // Piano key layout: 25 keys from C3 (MIDI 48) to C5 (MIDI 72)
@@ -94,6 +95,7 @@ export default function PianoKeyboard({
   currentStep,
   onStepChange,
   voicing,
+  fadeInactiveKeys = false,
 }: Props) {
   const scale = SCALES[scaleId];
   const degreeColors = getScaleDegreeColors(scaleId);
@@ -283,20 +285,27 @@ export default function PianoKeyboard({
 
   // Render a single key
   const renderKey = (key: KeyInfo) => {
-    const isActive = isKeyActive(key.pc);
-    const isRoot = getKeyDegree(key.pc) === 1 && isActive;
-    const color = getKeyColor(key.pc, isActive);
-    const label = getKeyLabel(key.pc, isActive);
-    const opacity = isActive ? getKeyOpacity(key.pc) : 1;
+    // isInSet = key belongs to current display set (scale tones or chord tones)
+    const isInSet = isKeyActive(key.pc);
+    const isRoot = getKeyDegree(key.pc) === 1 && isInSet;
+    const color = getKeyColor(key.pc, isInSet);
+    const label = getKeyLabel(key.pc, isInSet);
+
+    // Determine if this key should be faded (Focus mode + not in set)
+    const shouldFade = fadeInactiveKeys && !isInSet;
+
+    // Only compute step-mode opacity for in-set keys; faded keys use CSS opacity
+    const opacity = shouldFade ? undefined : (isInSet ? getKeyOpacity(key.pc) : 1);
 
     const keyClass = key.isBlack ? 'piano-key piano-key--black' : 'piano-key piano-key--white';
-    const activeClass = isActive ? 'piano-key--active' : '';
+    const activeClass = isInSet ? 'piano-key--active' : '';
     const rootClass = isRoot ? 'piano-key--root' : '';
+    const fadedClass = shouldFade ? 'piano-key--faded' : '';
 
     return (
       <div
         key={key.midiNote}
-        className={`${keyClass} ${activeClass} ${rootClass}`}
+        className={`${keyClass} ${activeClass} ${rootClass} ${fadedClass}`}
         style={{
           '--key-color': color ?? undefined,
           opacity,
