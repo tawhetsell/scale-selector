@@ -2,45 +2,48 @@
 
 Created by **Travis A. Whetsell**.
 
-Scale Selector is a guitar fretboard visualizer that displays all the notes of a selected musical scale as finger placement indicators on the fretboard.
+Scale Selector is a musical scale visualizer that shows scale tones and chord tones on:
+- a guitar fretboard, or
+- a piano keyboard (toggle in the visualizer)
 
 Live demo: https://tawhetsell.github.io/scale-selector/
 
-## What it does
+## Overview
 
-Visualization options include:
+Scale Selector lets you explore:
+- scale tones (all degrees)
+- triads and tetrads (by degree)
+- common progressions (I–IV–V, ii–V–I, etc.)
 
-1) Number of guitar strings (6 to 9)
-2) Musical scale
-3) Root note
-4) Number of frets (12 or 24)
-5) Chords view mode (scale tones, triads, or tetrads)
-6) Chord degree selection (triad/tetrad views)
-7) Finger placement labels (notes or intervals)
-8) Finger placement color mode (interval-based color or monochromatic)
-9) Chord progressions with CAGED/position-based display (I–IV–V, ii–V–I, etc.)
-10) Root string selection (4th, 5th, or 6th) for CAGED position anchoring
-11) Voicing/inversion selection (Root, 1st, 2nd, 3rd) for triads and tetrads
-12) Drop tuning support for the lowest string
+## Controls
 
-## Features
+- Scale + Key selection
+- Chords mode: Triad or Tetrad
+- Degree selection (1-7) 
+- Labels: Letters or Numbers
+- Color: Color or Mono
+- View toggle: Guitar ↔ Piano
 
-- Bass notes are highlighted with thick white outlines
-- Key root anchor on the selected root string gets a halo effect in position mode
-- Voicing works for both single chords and progressions
-- Mono mode maintains neutral grayscale regardless of chord/voicing selections
+Guitar view options:
+- Strings (6–9)
+- Frets (12/24)
+- Root string selection (for CAGED position anchoring)
+- Voicing selection (inversions)
+- Drop tuning (lowest string)
 
+Piano view:
+- Fixed 25-key keyboard range (C3 → C5)
+
+<!--
 ## Screenshots
 
-![Screenshot 1](screenshots/shot_1.png)
-![Screenshot 2](screenshots/shot_2.png)
-![Screenshot 3](screenshots/shot_3.png)
-![Screenshot 4](screenshots/shot_4.png)
+(Add updated screenshots for both Guitar and Piano views here.)
+-->
 
 ## Tech
 
 - Vite + React
-- Built through natural language prompting using `gpt-5-codex-high` and `claude-opus-4.5` in VS Code
+- Built through natural language prompting using `gpt-5.2-codex-xhigh` and `claude-opus-4.5` in VS Code
 - Deployed with GitHub Pages
 
 ## Run locally
