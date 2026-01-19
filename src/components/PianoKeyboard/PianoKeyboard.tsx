@@ -35,15 +35,15 @@ type Props = {
 const MONO_ROOT = '#f5f7fa';
 const MONO_TONE = '#8d949c';
 
-// Same progression colors as fretboard
+// Progression colors (matches fretboard)
 const PROGRESSION_COLORS = [
-  '#ff6b6b', // I - red
-  '#4ecdc4', // ii/II - teal
-  '#3A9BFF', // iii/III - blue
-  '#96ceb4', // IV/iv - green
-  '#ffeaa7', // V/v - yellow
-  '#dfe6e9', // vi/VI - gray
-  '#a29bfe', // vii/VII - purple
+  '#EA3F75', // I - pink
+  '#FF7A66', // ii/II - coral
+  '#7A73EF', // iii/III - violet
+  '#4281EA', // IV/iv - blue
+  '#00D4FF', // V/v - cyan
+  '#00FFC8', // vi/VI - mint
+  '#39FF88', // vii/VII - green
 ];
 
 // Key info for rendering

@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { computeFretMap } from '../../lib/music/theory';
 import { pcToName, getChordName, normalizePc } from '../../lib/music/notes';
-import { getScaleDegreeColors } from '../../lib/music/colors';
+import { getScaleDegreeColors, pickTextColor } from '../../lib/music/colors';
 import { SCALES } from '../../lib/music/scales';
 import type { ChordQuality } from '../../lib/music/progressions';
 
@@ -43,17 +43,8 @@ type Props = {
 const MONO_ROOT = '#f5f7fa';
 const MONO_TONE = '#8d949c';
 const INLAY_COLOR = '#b6bcc3';
-
-// Colors for progression chords - matches the degree color palette style
-const PROGRESSION_COLORS = [
-  '#ff6b6b', // I - red
-  '#4ecdc4', // ii/II - teal
-  '#3A9BFF', // iii/III - blue (matches COLOR palette)
-  '#96ceb4', // IV/iv - green
-  '#ffeaa7', // V/v - yellow
-  '#dfe6e9', // vi/VI - gray
-  '#a29bfe', // vii/VII - purple
-];
+const STRING_COLOR = 'rgba(255, 255, 255, 0.5)';
+const STANDOUT_OUTLINE = '#ffffff';
 
 /**
  * Find complete chord shapes where the bass note matches the target inversion.
@@ -456,7 +447,7 @@ export default function Fretboard({
           y1={stringY(s)}
           x2={stringEndX}
           y2={stringY(s)}
-          stroke="rgba(255, 255, 255, 0.5)"
+          stroke={STRING_COLOR}
           strokeWidth={1.4}
         />
       ))}
@@ -523,7 +514,7 @@ export default function Fretboard({
 
         // Determine fill color based on mode
         // Mono mode always uses neutral grayscale, regardless of chords/progression/voicing
-        // Multi-chord progressions (2+ chords) use progression colors in Color mode
+        // Multi-chord progressions (2+ chords) use chord numeral to pick degree color
         // Single-chord voicing mode uses degree colors in Color mode
         const isMultiChordProgression = progressionNumerals !== null && progressionNumerals.length > 1;
         // Get all chords this degree belongs to (shared tones belong to multiple chords)
@@ -532,9 +523,10 @@ export default function Fretboard({
         let fill: string;
         if (colorMode === 'mono') {
           fill = isRoot ? MONO_ROOT : MONO_TONE;
-        } else if (isMultiChordProgression && degreeToProgressionChords) {
-          // Use progression chord colors (only for real multi-chord progressions in Color mode)
-          fill = PROGRESSION_COLORS[markerChordIndex % PROGRESSION_COLORS.length];
+        } else if (isMultiChordProgression && degreeToProgressionChords && progressionNumerals) {
+          // Color by chord's numeral (root scale degree), not by position in progression
+          const chordNumeral = progressionNumerals[markerChordIndex];
+          fill = degreeColors[Math.min(Math.max(chordNumeral, 1) - 1, degreeColors.length - 1)];
         } else {
           fill = degreeColors[Math.min(Math.max(marker.degree, 1) - 1, degreeColors.length - 1)];
         }
@@ -549,23 +541,33 @@ export default function Fretboard({
             ? scale.degreeLabels[marker.degree - 1] ?? String(marker.degree)
             : pcToName(marker.pc, preferSharps);
 
-        const textFill = colorMode !== 'mono' ? '#09121f' : '#121417';
+        // Compute text color based on fill luminance for contrast
+        const textFill = colorMode !== 'mono' ? pickTextColor(fill) : '#121417';
+        // Subtle shadow for text readability (no stroke/outline)
+        const textShadow = colorMode !== 'mono' ? 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))' : undefined;
         const glow =
           colorMode === 'mono'
             ? 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.14))'
             : `drop-shadow(0 0 12px ${fill}44)`;
 
-        // Determine stroke style - bass notes and key root anchor get a thick white outline
-        // In mono mode, root notes (white fill) get a gray stroke for contrast
+        // Determine stroke style
+        // - Bass notes and key root anchor get thick standout outline
+        // - Root notes get standout outline (medium thickness)
+        // - 2nd/3rd voicing inversions in chord mode use standout outline for readability
+        // - Otherwise use string color for outline
         const hasThickStroke = isBassNote || isKeyRootAnchor;
+        const isChordMode = viewMode === 'triads' || viewMode === 'tetrads';
+        const useStandoutOutline = hasThickStroke || isRoot || (isChordMode && (voicing === '2nd' || voicing === '3rd'));
+
         let strokeColor: string;
-        if (hasThickStroke) {
-          strokeColor = '#ffffff';
-        } else if (colorMode === 'mono') {
+        if (colorMode === 'mono') {
           // In mono mode: root (white fill) gets gray stroke, others get light stroke
           strokeColor = isRoot ? 'rgba(141, 148, 156, 0.8)' : 'rgba(255, 255, 255, 0.65)';
+        } else if (useStandoutOutline) {
+          strokeColor = STANDOUT_OUTLINE;
         } else {
-          strokeColor = 'rgba(255, 255, 255, 0.9)';
+          // Default: use string color for outline
+          strokeColor = STRING_COLOR;
         }
         const strokeWidth = hasThickStroke ? 3 : (isRoot ? 2.2 : 1.4);
         const radius = hasThickStroke ? 12 : 11;
@@ -597,6 +599,7 @@ export default function Fretboard({
               dominantBaseline="middle"
               textAnchor="middle"
               fill={textFill}
+              style={{ filter: textShadow }}
             >
               {label}
             </text>
@@ -628,7 +631,7 @@ export default function Fretboard({
 
         return {
           chordRoot,
-          color: PROGRESSION_COLORS[index % PROGRESSION_COLORS.length],
+          color: degreeColors[Math.min(Math.max(chordRoot, 1) - 1, degreeColors.length - 1)],
           romanNumeral,
           qualitySymbol,
           chordName,
