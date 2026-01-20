@@ -130,8 +130,6 @@
 
 .stage__visualization {
   width: 100%;
-  /* Min height accommodates piano; guitar SVG determines its own height via viewBox */
-  min-height: 180px;
 }
 
 .stage__visualization svg {
