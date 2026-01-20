@@ -130,11 +130,8 @@
 
 .stage__visualization {
   width: 100%;
-  /* Lock aspect ratio to match 6-string guitar (12 frets): viewBox 924x204 */
-  aspect-ratio: 924 / 204;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  /* Min height accommodates piano; guitar SVG determines its own height via viewBox */
+  min-height: 180px;
 }
 
 .stage__visualization svg {
@@ -157,7 +154,6 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
 }
 
 /* Progression Legend */

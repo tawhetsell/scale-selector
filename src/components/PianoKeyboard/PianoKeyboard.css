@@ -2,22 +2,20 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
 }
 
 .piano-keyboard {
   display: flex;
   justify-content: center;
   width: 100%;
-  height: 100%;
-  flex: 1 1 auto;
 }
 
 .piano-keys {
   position: relative;
   display: flex;
   width: 100%;
-  height: 100%;
+  /* Use computed height from JS to match 6-string guitar proportions */
+  height: var(--instrument-height, 180px);
   box-sizing: border-box;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }

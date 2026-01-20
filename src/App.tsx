@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import Fretboard from './components/Fretboard/Fretboard';
 import PianoKeyboard from './components/PianoKeyboard/PianoKeyboard';
@@ -58,6 +58,9 @@ type VisualMode = 'guitar' | 'piano';
 // Static scale options - computed once at module load (hide Ionian since Major is equivalent)
 const SCALE_OPTIONS = Object.values(SCALES).filter((s) => s.id !== 'ionian');
 
+// 6-string guitar SVG dimensions: height=204, width=924 (12 frets compact)
+const GUITAR_6_ASPECT = 204 / 924;
+
 export default function App() {
   const [strings, setStrings] = useState(6);
   const [scaleId, setScaleId] = useState<keyof typeof SCALES>('major');
@@ -74,6 +77,25 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<number | null>(null);
   const [visualMode, setVisualMode] = useState<VisualMode>('guitar');
   const [fadeInactiveKeys, setFadeInactiveKeys] = useState(false);
+
+  // Ref for measuring instrument container width
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  // Compute instrument height to match 6-string guitar proportions
+  const updateInstrumentHeight = useCallback(() => {
+    if (stageRef.current) {
+      const width = stageRef.current.clientWidth;
+      const targetHeight = Math.round(width * GUITAR_6_ASPECT);
+      stageRef.current.style.setProperty('--instrument-height', `${targetHeight}px`);
+    }
+  }, []);
+
+  // Update on mount and resize
+  useEffect(() => {
+    updateInstrumentHeight();
+    window.addEventListener('resize', updateInstrumentHeight);
+    return () => window.removeEventListener('resize', updateInstrumentHeight);
+  }, [updateInstrumentHeight]);
 
   const openPcs = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
@@ -287,7 +309,7 @@ export default function App() {
 
       <section className="stage">
         <div className="stage__frame">
-          <div className="stage__visualization">
+          <div className="stage__visualization" ref={stageRef}>
             {visualMode === 'guitar' ? (
               <Fretboard
                 openPcs={openPcs}
