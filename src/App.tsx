@@ -3,7 +3,7 @@ import './App.css';
 import Fretboard from './components/Fretboard/Fretboard';
 import PianoKeyboard from './components/PianoKeyboard/PianoKeyboard';
 import { nameToPc } from './lib/music/notes';
-import { SCALES } from './lib/music/scales';
+import { SCALES, getGroupedScales } from './lib/music/scales';
 import { getScaleTriads, getScaleTetrads } from './lib/music/chords';
 import { getTuningPreset } from './lib/music/tunings';
 import { getScaleProgressions, supportsProgressions } from './lib/music/progressions';
@@ -55,8 +55,8 @@ type RootString = 6 | 5 | 4;
 type Voicing = 'root' | '1st' | '2nd' | '3rd';
 type VisualMode = 'guitar' | 'piano';
 
-// Static scale options - computed once at module load (hide Ionian since Major is equivalent)
-const SCALE_OPTIONS = Object.values(SCALES).filter((s) => s.id !== 'ionian');
+// Static scale groups - computed once at module load (hides Ionian since Major is equivalent)
+const SCALE_GROUPS = getGroupedScales();
 
 // 6-string guitar SVG dimensions: height=204, width=924 (12 frets compact)
 const GUITAR_6_ASPECT = 204 / 924;
@@ -197,21 +197,25 @@ export default function App() {
       <section className="panel">
         {/* Row 1: SCALE, ROOT, STRINGS */}
         <label className="control">
-          <span className="control__label">SCALES</span>
+          <span className="control__label">Scale</span>
           <select
             value={scaleId}
             onChange={(e) => setScaleId(e.target.value as keyof typeof SCALES)}
           >
-            {SCALE_OPTIONS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {shortenScaleName(s.name)}
-              </option>
+            {SCALE_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.scales.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {shortenScaleName(s.name)}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
 
         <label className="control">
-          <span className="control__label">KEY</span>
+          <span className="control__label">Key</span>
           <select value={rootName} onChange={(e) => setRootName(e.target.value)}>
             {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map((n) => (
               <option key={n} value={n}>
@@ -221,90 +225,88 @@ export default function App() {
           </select>
         </label>
 
-        <label className="control">
-          <span className="control__label">STRINGS</span>
-          <select value={strings} onChange={(e) => setStrings(Number(e.target.value))}>
-            {[6, 7, 8, 9].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
 
         {/* Row 2: CHORDS, DEGREE */}
         <label className="control">
-          <span className="control__label">CHORDS</span>
+          <span className="control__label">Chord</span>
           <select
             value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as ViewMode)}
+            onChange={(e) => {
+              const next = e.target.value as ViewMode;
+              setViewMode(next);
+              if (next === 'scale') {
+                setSelectedProgression('scale');
+                setCurrentStep(null);
+              }
+            }}
             disabled={!canShowTriads}
           >
-            <option value="scale">Scale</option>
+            <option value="scale">None</option>
             <option value="triads">Triads</option>
             <option value="tetrads">Tetrads</option>
           </select>
         </label>
 
-        <label className="control">
-          <span className="control__label">DEGREE</span>
-          <select
-            value={chordRootDegree}
-            onChange={(e) => setChordRootDegree(Number(e.target.value))}
-            disabled={degreeDisabled}
-            style={{ minWidth: '4rem' }}
-          >
-            {triads.map((triad) => (
-              <option key={triad.rootDegree} value={triad.rootDegree}>
-                {triad.rootDegree}
-              </option>
-            ))}
-          </select>
-        </label>
+        {viewMode !== 'scale' && (
+          <>
+            <label className="control">
+              <span className="control__label">Degree</span>
+              <select
+                value={chordRootDegree}
+                onChange={(e) => setChordRootDegree(Number(e.target.value))}
+                disabled={degreeDisabled}
+              >
+                {triads.map((triad) => (
+                  <option key={triad.rootDegree} value={triad.rootDegree}>
+                    {triad.rootDegree}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        {/* Row 3: PROGRESSION, ROOT STRING */}
-        <label className="control">
-          <span className="control__label">PROGS</span>
-          <select
-            value={selectedProgression}
-            onChange={(e) => setSelectedProgression(e.target.value)}
-            disabled={!canShowProgressions}
-          >
-            <option value="scale">Scale</option>
-            {availableProgressions.map((p) => (
-              <option key={p.name} value={p.name}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <label className="control">
+              <span className="control__label">Progs</span>
+              <select
+                value={selectedProgression}
+                onChange={(e) => setSelectedProgression(e.target.value)}
+                disabled={!canShowProgressions}
+              >
+                <option value="scale">None</option>
+                {availableProgressions.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="control">
-          <span className="control__label">ROOTSTR</span>
-          <select
-            value={rootString}
-            onChange={(e) => setRootString(Number(e.target.value) as RootString)}
-            disabled={!isProgressionActive}
-          >
-            <option value={4}>4th string</option>
-            <option value={5}>5th string</option>
-            <option value={6}>6th string</option>
-          </select>
-        </label>
+            <label className="control">
+              <span className="control__label">Root Str</span>
+              <select
+                value={rootString}
+                onChange={(e) => setRootString(Number(e.target.value) as RootString)}
+                disabled={!isProgressionActive}
+              >
+                <option value={4}>4th string</option>
+                <option value={5}>5th string</option>
+                <option value={6}>6th string</option>
+              </select>
+            </label>
 
-        <label className="control">
-          <span className="control__label">VOICE</span>
-          <select
-            value={voicing}
-            onChange={(e) => setVoicing(e.target.value as Voicing)}
-            disabled={viewMode === 'scale'}
-          >
-            <option value="root">Root</option>
-            <option value="1st">1st Inv</option>
-            <option value="2nd">2nd Inv</option>
-            {viewMode === 'tetrads' && <option value="3rd">3rd Inv</option>}
-          </select>
-        </label>
+            <label className="control">
+              <span className="control__label">Voice</span>
+              <select
+                value={voicing}
+                onChange={(e) => setVoicing(e.target.value as Voicing)}
+              >
+                <option value="root">Root</option>
+                <option value="1st">1st Inv</option>
+                <option value="2nd">2nd Inv</option>
+                {viewMode === 'tetrads' && <option value="3rd">3rd Inv</option>}
+              </select>
+            </label>
+          </>
+        )}
       </section>
 
       <section className="stage">
@@ -362,7 +364,10 @@ export default function App() {
               />
             )}
           </div>
-          <div className="stage__footer">
+        </div>
+      </section>
+
+      <section className="panel panel--footer">
             <div
               className="visual-toggle"
               role="radiogroup"
@@ -402,6 +407,24 @@ export default function App() {
                 </svg>
               </button>
             </div>
+
+            {visualMode === 'guitar' && (
+              <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="String count">
+                {[6, 7, 8].map((n) => (
+                  <button
+                    key={n}
+                    className={`visual-toggle__btn ${strings === n ? 'visual-toggle__btn--active' : ''}`}
+                    onClick={() => setStrings(n)}
+                    style={{ minWidth: 0 }}
+                    aria-checked={strings === n}
+                    aria-label={`${n} strings`}
+                    role="radio"
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Color mode">
               <button
@@ -514,8 +537,6 @@ export default function App() {
                 </button>
               </div>
             )}
-          </div>
-        </div>
       </section>
     </div>
   );
