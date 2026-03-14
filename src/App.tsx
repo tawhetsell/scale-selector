@@ -7,6 +7,7 @@ import { SCALES, getGroupedScales } from './lib/music/scales';
 import { getScaleTriads, getScaleTetrads } from './lib/music/chords';
 import { getTuningPreset } from './lib/music/tunings';
 import { getScaleProgressions, supportsProgressions } from './lib/music/progressions';
+import Metronome from './components/Metronome/Metronome';
 
 const SCALE_NAME_ABBREVIATIONS: Array<[RegExp, string]> = [
   [/Harmonic/gi, 'Harm.'],
@@ -307,6 +308,7 @@ export default function App() {
             </label>
           </>
         )}
+
       </section>
 
       <section className="stage">
@@ -537,6 +539,8 @@ export default function App() {
                 </button>
               </div>
             )}
+
+            <Metronome />
       </section>
     </div>
   );
