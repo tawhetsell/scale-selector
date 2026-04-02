@@ -43,8 +43,6 @@ Piano view:
 ## Tech
 
 - Vite + React
-- Built through natural language prompting using `gpt-5.2-codex-xhigh` and `claude-opus-4.5` in VS Code
-- Deployed with GitHub Pages
 
 ## Run locally
 
@@ -56,8 +54,6 @@ Build for production:
     npm run build
     npm run preview
 
-## License
+## Acknowledgements
 
-MIT — see the [LICENSE](LICENSE) file.
-
-Copyright (c) 2026 Travis A. Whetsell
+- Built through natural language prompting using `gpt-5.2-codex-xhigh` and `claude-opus-4.5-4.6` in VS Code
