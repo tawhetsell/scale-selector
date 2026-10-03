@@ -5,7 +5,7 @@
 - Keep commit messages short and focused on what changed.
 
 ## WHY
-Scale Selector is a guitar fretboard and piano keyboard visualizer showing scale tones and chord tones (triads/tetrads) across common tunings and fret ranges. It has 45 scale options spelled for 17 keys, named chord progressions for 7-note scales, playable chord shapes for each inversion, a root-string position window, and a metronome. Open issues and the remaining plan are in agent_docs/roadmap.md.
+Scale Selector is a guitar fretboard and piano keyboard visualizer showing scale tones and chord tones (triads/tetrads) across common tunings and fret ranges. It has 45 scale options spelled for 17 keys, named chord progressions for 7-note scales, playable chord shapes for each inversion, a root-string position window, click-to-play notes, a full-screen view for phones held sideways, and a metronome. Open issues and the remaining plan are in agent_docs/roadmap.md.
 
 ## WHAT (repo map)
 - src/App.tsx, src/App.css — main UI, top dropdown panel + footer toggles, mode state, legend data

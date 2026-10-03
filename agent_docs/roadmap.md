@@ -1,12 +1,22 @@
 # Roadmap and Known Issues
 
-Reviewed on 2026-10-03 at commit `c28ec2b`. Phases 1–3 of the plan were implemented the same day. Re-check the code before acting on anything here.
+Reviewed on 2026-10-03 at commit `c28ec2b`. Later that day:
+- Phases 1–3 of the plan and click-to-play landed in `fd0d6f1`.
+- The full-screen view (the phone layout) followed.
+
+Re-check the code before acting on anything here.
 
 ## Current state
 
 - `npm run lint`, `npm test` and `npm run build` pass.
   - `npm test` runs Vitest: 25 tests in `src/lib/music/*.test.ts`.
 - There is no CI. Deploying means running `npm run build` and committing `docs/`.
+- A security scan on 2026-10-03, before `fd0d6f1` was pushed, came back clean:
+  - no vulnerabilities in the changes;
+  - no secrets in the files or history;
+  - commits use GitHub's no-reply email;
+  - `.env.local` is ignored and never read;
+  - the app collects and sends no data.
 - Features:
   - 45 scale options, with notes spelled for the chosen key (17 keys, including flats).
   - Triads and tetrads for 7-note scales, shown as playable shapes for each inversion.
@@ -98,6 +108,7 @@ The phone layout (formerly item 1) is done as the full-screen view above.
 ## Backlog
 
 - A string-set choice for single-chord shapes (today all string sets show at once), and drop-2 voicings for tetrads.
+- On a phone held upright, the full-screen button wraps to its own line under the top dropdowns. It could be tucked into the panel's top-right corner to save that row.
 - String names at the nut, and fret numbers.
 - Clearer toggle labels in place of "Tune/Drop" and "Half/Full", plus `title` tooltips on the footer toggles.
 - Chord-relative labels (R, 3, 5, ♭7) while stepping through a progression.

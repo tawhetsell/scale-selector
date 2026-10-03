@@ -92,6 +92,8 @@ This is a fixed box around the root, not true CAGED shapes.
 - **Nut:** a white bar at fret 0.
 - **Inlays:** dots below the strings at frets 3, 5, 7, 9, 12 (double), 15, 17, 19, 21 and 24 (double).
 - **Markers:** circles (radius 11, or 12 with a thick ring) labeled with the spelled note name or the degree label.
+  - Each marker is a `g.fret-marker`; clicking it plays the note at its real pitch (`playNote(marker.midi)`, see ui-modes.md).
+  - Markers grow slightly while pressed.
 - **Labels:** no string names or fret numbers are drawn.
 
 Marker positions:
@@ -100,7 +102,7 @@ const fretX = (fret) => nutX + fret * fretWidth;
 const stringY = (sIdx) => padding + (strings - 1 - sIdx) * stringGap;
 ```
 
-`stringY` puts index 0 (the lowest pitch) at the bottom. The SVG scales with `width: 100%`; its dimensions are viewBox units, not pixels.
+`stringY` puts index 0 (the lowest pitch) at the bottom. The SVG scales with `width: 100%`; its dimensions are viewBox units, not pixels. In the full-screen view it also gets `height: 100%`, so the viewBox keeps its shape and it shrinks to fit a short screen.
 
 ## File References
 - `src/lib/music/tunings.ts` — tuning presets (MIDI), drop tuning

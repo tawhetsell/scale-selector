@@ -170,7 +170,7 @@ Automatic resets (App.tsx effects and handlers):
 ## File References
 - `src/App.tsx` — state, control panels, mode logic, legend data
 - `src/hooks/useFullscreen.ts` — full-screen view (page cover, real fullscreen, landscape lock)
-- `src/App.css` — panel, select, toggle and legend styling
+- `src/App.css` — panel, select, toggle, legend and full-screen styling
 - `src/components/Fretboard/Fretboard.tsx` — marker selection and rendering, rings
 - `src/components/PianoKeyboard/PianoKeyboard.tsx` — piano rendering and voicings
 - `src/components/ProgressionLegend/ProgressionLegend.tsx` — legend and step controls

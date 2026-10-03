@@ -15,6 +15,7 @@ Scale Selector lets you explore:
 - triads and tetrads (7th chords) built on any degree of a 7-note scale
 - common progressions for each 7-note scale (I–IV–V, ii–V–I, etc.), one chord at a time or all together
 - click any note on the fretboard or keyboard to hear it
+- a full-screen view of the fretboard or keyboard, made for phones turned sideways
 - a built-in metronome
 
 ## Controls
