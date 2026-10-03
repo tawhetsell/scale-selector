@@ -13,6 +13,7 @@ Scale Selector is a guitar fretboard and piano keyboard visualizer showing scale
 - src/components/PianoKeyboard/ — 25-key piano view (C3–C5); lights one voicing per chord in chord modes
 - src/components/ProgressionLegend/ — progression legend + step controls, shared by both instruments
 - src/components/Metronome/ — Web Audio metronome (40–240 BPM)
+- src/hooks/useFullscreen.ts — full-screen view of the instrument (covers the page; real fullscreen + landscape where the browser allows)
 - src/lib/music/* — pure TS music logic:
   - notes.ts — pitch class <-> note name, KEY_NAMES, key-aware spelling (spellScaleDegrees)
   - scales.ts — 46 scale definitions (45 in the menu; Ionian hidden) with intervals and degree labels; degree-label parsing

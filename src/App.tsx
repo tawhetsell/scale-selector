@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
+import { useFullscreen } from './hooks/useFullscreen';
 import Fretboard from './components/Fretboard/Fretboard';
 import PianoKeyboard from './components/PianoKeyboard/PianoKeyboard';
 import ProgressionLegend, { type LegendChord } from './components/ProgressionLegend/ProgressionLegend';
@@ -100,6 +101,14 @@ export default function App() {
     window.addEventListener('resize', updateInstrumentHeight);
     return () => window.removeEventListener('resize', updateInstrumentHeight);
   }, [updateInstrumentHeight]);
+
+  // Full-screen view of the instrument (and progression legend)
+  const { isFullscreen, enter: enterFullscreen, exit: exitFullscreen } = useFullscreen(stageRef);
+
+  // The stage changes width without a window resize when it covers the page on iPhone
+  useLayoutEffect(() => {
+    updateInstrumentHeight();
+  }, [isFullscreen, updateInstrumentHeight]);
 
   const openStrings = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
@@ -306,11 +315,39 @@ export default function App() {
           </>
         )}
 
+        <div className="visual-toggle panel__fullscreen">
+          <button
+            className="visual-toggle__btn"
+            onClick={enterFullscreen}
+            aria-label="Full screen"
+            title="Full screen"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="4 9 4 4 9 4"/>
+              <polyline points="15 4 20 4 20 9"/>
+              <polyline points="20 15 20 20 15 20"/>
+              <polyline points="9 20 4 20 4 15"/>
+            </svg>
+          </button>
+        </div>
       </section>
 
       <section className="stage">
         <div className="stage__frame">
-          <div className="stage__visualization" ref={stageRef}>
+          <div
+            className={`stage__visualization ${isFullscreen ? 'stage__visualization--fullscreen' : ''}`}
+            ref={stageRef}
+          >
+            {isFullscreen && (
+              <button
+                className="fullscreen-exit"
+                onClick={exitFullscreen}
+                aria-label="Exit full screen"
+                title="Exit full screen"
+              >
+                ✕
+              </button>
+            )}
             {visualMode === 'guitar' ? (
               <Fretboard
                 openStrings={openStrings}

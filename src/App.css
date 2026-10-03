@@ -156,6 +156,56 @@
   gap: var(--ui-gap);
 }
 
+/* Full-screen view: the instrument and legend cover the page (see hooks/useFullscreen.ts) */
+.stage__visualization--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #000;
+}
+
+.stage__visualization--fullscreen .fretboard-container,
+.stage__visualization--fullscreen .piano-container {
+  flex: 1 1 0;
+  min-height: 0;
+  justify-content: center;
+}
+
+/* The viewBox keeps the fretboard's shape, so it shrinks to fit a short screen */
+.stage__visualization--fullscreen .fretboard-container svg {
+  height: 100%;
+}
+
+.stage__visualization--fullscreen .progression-legend {
+  margin-top: 0;
+}
+
+.fullscreen-exit {
+  align-self: flex-end;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f7fa;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fullscreen-exit:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+body.no-scroll {
+  overflow: hidden;
+}
+
 /* Fretboard container for legend support */
 .fretboard-container {
   display: flex;
@@ -354,6 +404,11 @@
   .control {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  /* Labels sit above the dropdowns here, so line the full-screen button up with the dropdowns */
+  .panel__fullscreen {
+    align-self: flex-end;
   }
 
   .progression-legend {

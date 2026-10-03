@@ -15,6 +15,11 @@ Shown only when CHORD is Triads or Tetrads:
 - **ROOT STR**: 4th, 5th or 6th string. It anchors the position window and is enabled only while a progression is active.
 - **VOICE**: Root, 1st Inv or 2nd Inv, plus 3rd Inv for tetrads.
 
+Always last in the top panel:
+- **Full screen** (`.panel__fullscreen`): an icon button that shows the instrument over the whole page (see Full-Screen View).
+  - On desktop it sits at the right end of the row.
+  - On phones the first row is full, so it wraps to its own line under the dropdowns, aligned with their bottom edge.
+
 Disabled dropdowns are dimmed (`.control select:disabled`).
 
 **Footer panel** (`.panel--footer`, segmented toggles, left to right):
@@ -118,10 +123,23 @@ Automatic resets (App.tsx effects and handlers):
 - Leaving Tetrads while VOICE is "3rd Inv" resets VOICE to Root.
 - An active progression forces Triads (if CHORD was None) and Color (if Mono was selected).
 
+## Full-Screen View (hooks/useFullscreen.ts)
+
+- **Entering:** the top panel's full-screen button calls `useFullscreen(stageRef).enter()`. This adds `stage__visualization--fullscreen` to the stage element, which becomes a fixed, full-page black layer containing:
+  - an exit button (✕) in its own top row;
+  - the instrument, which flexes to fill the space (the fretboard SVG keeps its shape and shrinks to fit a short screen);
+  - the progression legend, if there is one.
+- **Real fullscreen:** where the browser allows it (Android, desktop), the stage also enters real fullscreen (`requestFullscreen`) and asks for landscape (`screen.orientation.lock`). iPhone only allows real fullscreen for videos, so there the layer just covers the page.
+- **Exiting:** the ✕ button, Esc, or leaving real fullscreen (e.g. Android's back gesture) all close the view. Closing also exits real fullscreen and unlocks the orientation.
+- **Page scroll:** while the view is open, `body.no-scroll` stops the page behind it from scrolling.
+- **Orientation:** there is deliberately no portrait layout; people turn the phone sideways. Turning the phone while the view is open resizes the instrument.
+
 ## Instrument Sizing
 
-- App measures the stage width on resize and sets `--instrument-height`, so the piano matches the aspect ratio of a 6-string, 12-fret fretboard (204/924).
-- The fretboard SVG scales with `width: 100%`. On a phone (390px wide) it is about 300px wide, and its labels are unreadable (roadmap.md).
+- App measures the stage width on resize, and when the full-screen view opens or closes. It sets `--instrument-height` so the piano matches the aspect ratio of a 6-string, 12-fret fretboard (204/924).
+- The fretboard SVG scales with `width: 100%`.
+  - On a phone held upright, the normal page shows it about 300px wide, which is too small to read.
+  - The full-screen view with the phone sideways makes it about 800px wide.
 
 ## Piano (PianoKeyboard.tsx)
 
@@ -151,6 +169,7 @@ Automatic resets (App.tsx effects and handlers):
 
 ## File References
 - `src/App.tsx` — state, control panels, mode logic, legend data
+- `src/hooks/useFullscreen.ts` — full-screen view (page cover, real fullscreen, landscape lock)
 - `src/App.css` — panel, select, toggle and legend styling
 - `src/components/Fretboard/Fretboard.tsx` — marker selection and rendering, rings
 - `src/components/PianoKeyboard/PianoKeyboard.tsx` — piano rendering and voicings

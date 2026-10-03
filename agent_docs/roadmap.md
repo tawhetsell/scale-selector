@@ -14,6 +14,7 @@ Reviewed on 2026-10-03 at commit `c28ec2b`. Phases 1–3 of the plan were implem
   - A root-string position window.
   - A guitar view (6/7/8 strings, 12/24 frets, drop tuning) and a 25-key piano view.
   - Click any note to hear it.
+  - A full-screen view of the instrument, meant for phones held sideways.
   - A metronome.
 
 ## Fixed on 2026-10-03 (Phases 1–3)
@@ -55,6 +56,12 @@ Each fix has unit tests unless noted.
   - A Karplus–Strong guitar pluck was tried first, but the owner found it harsh and asked for a very basic sound.
   - Audio lives in `src/lib/audio/synth.ts`, which the metronome now shares (one AudioContext).
   - It's mouse/touch only for now; keyboard access is in the backlog.
+- **Full-screen view** (the owner's choice for the phone layout):
+  - A button at the right end of the top panel shows just the instrument, the progression legend, and an exit button over the whole page.
+  - On Android and desktop it also enters real fullscreen and asks for landscape. iPhone only allows real fullscreen for videos, so there it just covers the page.
+  - There is deliberately no portrait layout; people turn the phone sideways.
+  - On a 390px-tall landscape phone, fretboard notes are about 19px across, versus about 8px in the normal portrait page.
+  - Code: `src/hooks/useFullscreen.ts` and the `stage__visualization--fullscreen` styles in App.css.
 
 ## Defaults chosen for the earlier open decisions
 
@@ -68,22 +75,23 @@ These are easy to change:
 
 ## Open issues
 
-1. **The fretboard is unreadable on phones.** At a 390px viewport the SVG is about 300px wide. See Phase 4, item 1.
+None known. On a phone held upright, the normal page still shows a small fretboard (about 300px wide). The full-screen view, with the phone turned sideways, is the intended fix.
 
 ## Plan
 
 ### Phase 4: features, in priority order
 
-1. **Phone-friendly fretboard:** a vertical orientation below about 720px, or a zoomed 5-fret window.
-2. **Shareable links and remembered settings:**
+The phone layout (formerly item 1) is done as the full-screen view above.
+
+1. **Shareable links and remembered settings:**
    - Move App's `useState`s and the effects that fix up state into one reducer.
    - Sync the reducer state to the URL query string, and keep the last state in `localStorage`.
-3. **More sound:** tapping a note already plays it. Next:
+2. **More sound:** tapping a note already plays it. Next:
    - Play a whole scale or chord (strummed on guitar).
    - Let the metronome advance the progression one chord per bar, playing each chord.
    - `playNote()` and the shared AudioContext in `src/lib/audio/synth.ts` are the building blocks.
-4. **Scale position patterns** for scale mode: CAGED, three-notes-per-string and pentatonic boxes. The ROOT STR window is a fixed box around the root, not CAGED shapes.
-5. **Info panel** below the instrument:
+3. **Scale position patterns** for scale mode: CAGED, three-notes-per-string and pentatonic boxes. The ROOT STR window is a fixed box around the root, not CAGED shapes.
+4. **Info panel** below the instrument:
    - The scale's notes and step formula (W–W–H…).
    - Clickable chord chips (e.g. "ii · F#m7") that replace the numeric DEGREE menu.
 

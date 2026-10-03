@@ -26,6 +26,7 @@ Top panel:
 - Progs: a named progression for the current scale
 - Root Str: anchors a progression to a fret position around the root on the 4th, 5th, or 6th string
 - Voice: root position or an inversion (the guitar shows playable shapes with that bass note; the piano shows the voicing)
+- Full screen: shows just the instrument over the whole page (on a phone, turn it sideways)
 
 Bottom panel:
 - View toggle: Guitar ↔ Piano
@@ -51,7 +52,6 @@ Piano view:
 ## Roadmap
 
 Planned features, roughly in order:
-- A phone-friendly fretboard
 - Shareable links and remembered settings
 - Playing whole scales and chords, with the metronome stepping through progressions
 - Scale position patterns (CAGED, three notes per string)
