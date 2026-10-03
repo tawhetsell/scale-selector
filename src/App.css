@@ -121,6 +121,11 @@
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
 }
 
+.control select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .stage {
   display: grid;
 }
@@ -156,6 +161,18 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+}
+
+/* Clickable fretboard notes (clicking plays the note) */
+.fret-marker {
+  cursor: pointer;
+  user-select: none;
+}
+
+.fret-marker:active {
+  transform: scale(1.15);
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 /* Progression Legend */

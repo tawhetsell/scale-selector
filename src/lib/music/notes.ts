@@ -1,3 +1,5 @@
+import { parseDegreeLabel } from './scales';
+
 export const PC: Record<string, number> = {
   C: 0,
   "C#": 1,
@@ -36,32 +38,37 @@ export function nameToPc(name: string): number {
   return n;
 }
 
-/**
- * Get the chord suffix for display based on chord quality.
- */
-export function getChordSuffix(quality: string): string {
-  switch (quality) {
-    case 'maj': return '';
-    case 'min': return 'm';
-    case 'dim': return '°';
-    case 'aug': return '+';
-    case 'maj7': return 'maj7';
-    case 'min7': return 'm7';
-    case 'dom7': return '7';
-    case 'dim7': return '°7';
-    case 'minMaj7': return 'mM7';
-    case 'aug7': return '+7';
-    case 'half-dim': return 'ø7';
-    default: return '';
-  }
+/** Frequency in Hz of a MIDI note number (A4 = 69 = 440 Hz). */
+export function midiToFrequency(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+/** Keys offered in the KEY menu: chromatic order, both spellings for black keys. */
+export const KEY_NAMES = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_PCS = [0, 2, 4, 5, 7, 9, 11];
+
+/** Spells a pitch class on a letter (0 = C … 6 = B), e.g. (10, 6) => 'Bb'. Null if it needs more than a double accidental. */
+function spellOnLetter(pc: number, letterIndex: number): string | null {
+  let offset = normalizePc(pc - LETTER_PCS[letterIndex]);
+  if (offset > 6) offset -= 12;
+  if (Math.abs(offset) > 2) return null;
+  return LETTERS[letterIndex] + (offset > 0 ? '#'.repeat(offset) : 'b'.repeat(-offset));
 }
 
 /**
- * Get a displayable chord name from root pitch class and quality.
- * Example: (0, 'min') => 'Cm', (4, 'maj') => 'E'
+ * Note name for each scale degree. A degree's letter comes from its label's number counted
+ * up from the key letter, so F major gets Bb (a kind of 4th), not A#.
  */
-export function getChordName(rootPc: number, quality: string, preferSharps = true): string {
-  const rootName = pcToName(rootPc, preferSharps);
-  const suffix = getChordSuffix(quality);
-  return `${rootName}${suffix}`;
+export function spellScaleDegrees(keyName: string, intervals: number[], degreeLabels: string[]): string[] {
+  const rootPc = nameToPc(keyName);
+  const rootLetter = LETTERS.indexOf(keyName[0]);
+  const preferSharps = !keyName.slice(1).includes('b');
+  return intervals.map((interval, i) => {
+    const pc = normalizePc(rootPc + interval);
+    const label = parseDegreeLabel(degreeLabels[i] ?? '');
+    const spelled = label && rootLetter >= 0 ? spellOnLetter(pc, (rootLetter + label.number - 1) % 7) : null;
+    return spelled ?? pcToName(pc, preferSharps);
+  });
 }

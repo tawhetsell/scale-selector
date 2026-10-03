@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import Fretboard from './components/Fretboard/Fretboard';
 import PianoKeyboard from './components/PianoKeyboard/PianoKeyboard';
-import { nameToPc } from './lib/music/notes';
+import ProgressionLegend, { type LegendChord } from './components/ProgressionLegend/ProgressionLegend';
+import { KEY_NAMES, nameToPc, spellScaleDegrees } from './lib/music/notes';
 import { SCALES, getGroupedScales } from './lib/music/scales';
-import { getScaleTriads, getScaleTetrads } from './lib/music/chords';
+import { describeChords, getScaleTriads, type ChordSize, type Inversion } from './lib/music/chords';
+import { getDegreeColor } from './lib/music/colors';
 import { getTuningPreset } from './lib/music/tunings';
-import { getScaleProgressions, supportsProgressions } from './lib/music/progressions';
+import { getScaleProgressions } from './lib/music/progressions';
 import Metronome from './components/Metronome/Metronome';
 
 const SCALE_NAME_ABBREVIATIONS: Array<[RegExp, string]> = [
@@ -38,7 +40,6 @@ function shortenScaleName(name: string): string {
   if (name.length <= 16) return name;
 
   let label = name.replace(/\s*\([^)]*\)/g, '').trim();
-  label = label.replace(/[�]/g, '');
   for (const [pattern, replacement] of SCALE_NAME_ABBREVIATIONS) {
     label = label.replace(pattern, replacement);
   }
@@ -55,6 +56,8 @@ type ViewMode = 'scale' | 'triads' | 'tetrads';
 type RootString = 6 | 5 | 4;
 type Voicing = 'root' | '1st' | '2nd' | '3rd';
 type VisualMode = 'guitar' | 'piano';
+
+const VOICING_INVERSIONS: Record<Voicing, Inversion> = { root: 0, '1st': 1, '2nd': 2, '3rd': 3 };
 
 // Static scale groups - computed once at module load (hides Ionian since Major is equivalent)
 const SCALE_GROUPS = getGroupedScales();
@@ -98,61 +101,52 @@ export default function App() {
     return () => window.removeEventListener('resize', updateInstrumentHeight);
   }, [updateInstrumentHeight]);
 
-  const openPcs = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
+  const openStrings = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
 
   const scale = SCALES[scaleId];
 
-  const canShowTriads = scale.intervals.length === 7;
-  const canShowProgressions = supportsProgressions(scaleId);
+  // Note names spelled for the key (F major gets Bb, not A#)
+  const degreeNames = useMemo(
+    () => spellScaleDegrees(rootName, scale.intervals, scale.degreeLabels),
+    [rootName, scale]
+  );
 
-  const { availableProgressions, chordQualities } = useMemo(() => {
-    const data = getScaleProgressions(scaleId);
-    return {
-      availableProgressions: data?.progressions ?? [],
-      chordQualities: data?.chordQualities ?? [],
-    };
-  }, [scaleId]);
+  const canShowTriads = scale.intervals.length === 7;
+
+  const availableProgressions = useMemo(() => getScaleProgressions(scaleId), [scaleId]);
+  const canShowProgressions = availableProgressions.length > 0;
 
   const activeProgression = useMemo(
     () => availableProgressions.find((p) => p.name === selectedProgression) ?? null,
     [availableProgressions, selectedProgression]
   );
 
-  const isProgressionActive = selectedProgression !== 'scale' && activeProgression !== null;
+  const isProgressionActive = activeProgression !== null;
 
-  // Single-chord voicing mode: when CHORDS = Triads/Tetrads but no progression is selected
-  const isSingleChordVoicingMode = (viewMode === 'triads' || viewMode === 'tetrads') && !isProgressionActive;
+  const chordSize: ChordSize | null = !canShowTriads
+    ? null
+    : viewMode === 'triads'
+    ? 3
+    : viewMode === 'tetrads'
+    ? 4
+    : null;
+  const inversion = VOICING_INVERSIONS[voicing];
+  const progressionNumerals = chordSize !== null && activeProgression ? activeProgression.numerals : null;
 
   const triads = useMemo(
     () => (canShowTriads ? getScaleTriads(scale) : []),
     [canShowTriads, scale]
   );
 
-  const tetrads = useMemo(
-    () => (canShowTriads ? getScaleTetrads(scale) : []),
-    [canShowTriads, scale]
-  );
-
-  const activeTriad =
-    canShowTriads && viewMode === 'triads'
-      ? triads.find((t) => t.rootDegree === chordRootDegree) ?? triads[0] ?? null
-      : null;
-
-  const activeTetrad =
-    canShowTriads && viewMode === 'tetrads'
-      ? tetrads.find((t) => t.rootDegree === chordRootDegree) ?? tetrads[0] ?? null
-      : null;
-
-  // Get base chord degrees (without voicing rotation - filtering handles inversion)
-  const activeChordDegrees = useMemo(() => {
-    if (viewMode === 'triads' && activeTriad) {
-      return activeTriad.degrees;
-    } else if (viewMode === 'tetrads' && activeTetrad) {
-      return activeTetrad.degrees;
-    }
-    return null;
-  }, [viewMode, activeTriad, activeTetrad]);
+  const legendChords = useMemo((): LegendChord[] | null => {
+    if (chordSize === null || !progressionNumerals || progressionNumerals.length < 2) return null;
+    return describeChords(scale, progressionNumerals, chordSize, degreeNames).map((chord) => ({
+      numeral: chord.numeral,
+      name: chord.name,
+      color: getDegreeColor(scaleId, chord.rootDegree - 1) ?? '#ffffff',
+    }));
+  }, [chordSize, progressionNumerals, scale, degreeNames, scaleId]);
 
   useEffect(() => {
     if (!canShowTriads && viewMode !== 'scale') {
@@ -163,12 +157,12 @@ export default function App() {
     }
   }, [canShowTriads, scale.intervals.length, chordRootDegree, viewMode]);
 
-  // Reset progression when scale changes and doesn't support progressions
+  // Reset the progression when the new scale doesn't have it
   useEffect(() => {
-    if (!canShowProgressions && selectedProgression !== 'scale') {
+    if (selectedProgression !== 'scale' && !activeProgression) {
       setSelectedProgression('scale');
     }
-  }, [canShowProgressions, selectedProgression]);
+  }, [selectedProgression, activeProgression]);
 
   // Reset step when progression changes
   useEffect(() => {
@@ -218,7 +212,7 @@ export default function App() {
         <label className="control">
           <span className="control__label">Key</span>
           <select value={rootName} onChange={(e) => setRootName(e.target.value)}>
-            {['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map((n) => (
+            {KEY_NAMES.map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
@@ -238,6 +232,9 @@ export default function App() {
               if (next === 'scale') {
                 setSelectedProgression('scale');
                 setCurrentStep(null);
+              }
+              if (next !== 'tetrads' && voicing === '3rd') {
+                setVoicing('root'); // triads have no 3rd inversion
               }
             }}
             disabled={!canShowTriads}
@@ -316,53 +313,42 @@ export default function App() {
           <div className="stage__visualization" ref={stageRef}>
             {visualMode === 'guitar' ? (
               <Fretboard
-                openPcs={openPcs}
+                openStrings={openStrings}
                 maxFrets={maxFrets}
                 rootPc={rootPc}
                 intervals={scale.intervals}
                 scaleId={scaleId}
+                degreeNames={degreeNames}
                 labelMode={labelMode}
                 colorMode={colorMode}
-                preferSharps={true}
-                viewMode={canShowTriads ? viewMode : 'scale'}
-                triadDegrees={canShowTriads && activeChordDegrees ? activeChordDegrees : null}
-                progressionNumerals={
-                  isProgressionActive && activeProgression
-                    ? activeProgression.numerals
-                    : isSingleChordVoicingMode
-                    ? [chordRootDegree] // Synthetic single-chord "progression"
-                    : null
-                }
-                usePositionMode={isProgressionActive}
+                chordSize={chordSize}
+                chordRootDegree={chordRootDegree}
+                progressionNumerals={progressionNumerals}
+                inversion={inversion}
                 rootString={rootString}
-                voicing={voicing}
-                chordQualities={chordQualities}
                 currentStep={currentStep}
-                onStepChange={setCurrentStep}
-                progressionName={isProgressionActive ? selectedProgression : null}
               />
             ) : (
               <PianoKeyboard
                 rootPc={rootPc}
                 intervals={scale.intervals}
                 scaleId={scaleId}
+                degreeNames={degreeNames}
                 labelMode={labelMode}
                 colorMode={colorMode}
-                preferSharps={true}
-                viewMode={canShowTriads ? viewMode : 'scale'}
-                triadDegrees={canShowTriads && activeChordDegrees ? activeChordDegrees : null}
-                progressionNumerals={
-                  isProgressionActive && activeProgression
-                    ? activeProgression.numerals
-                    : isSingleChordVoicingMode
-                    ? [chordRootDegree]
-                    : null
-                }
-                chordQualities={chordQualities}
+                chordSize={chordSize}
+                chordRootDegree={chordRootDegree}
+                progressionNumerals={progressionNumerals}
+                inversion={inversion}
+                currentStep={currentStep}
+                fadeInactiveKeys={fadeInactiveKeys}
+              />
+            )}
+            {legendChords && (
+              <ProgressionLegend
+                chords={legendChords}
                 currentStep={currentStep}
                 onStepChange={setCurrentStep}
-                voicing={voicing}
-                fadeInactiveKeys={fadeInactiveKeys}
               />
             )}
           </div>

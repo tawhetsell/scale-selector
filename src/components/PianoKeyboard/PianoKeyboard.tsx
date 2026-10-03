@@ -1,31 +1,29 @@
-import { useMemo, useCallback } from 'react';
-import { pcToName, normalizePc } from '../../lib/music/notes';
-import { scaleSet, pcToDegree } from '../../lib/music/theory';
+import { useMemo } from 'react';
+import { pcToName } from '../../lib/music/notes';
+import { pcToDegree } from '../../lib/music/theory';
+import { getChordDegrees, type ChordSize, type Inversion } from '../../lib/music/chords';
+import { getChordVoicingMidi } from '../../lib/music/voicings';
 import { getScaleDegreeColors } from '../../lib/music/colors';
 import { SCALES } from '../../lib/music/scales';
-import type { ChordQuality } from '../../lib/music/progressions';
+import { playNote } from '../../lib/audio/synth';
 import './PianoKeyboard.css';
 
 type LabelMode = 'degree' | 'letters';
 type ColorMode = 'mono' | 'color';
 type ScaleId = keyof typeof SCALES;
-type ViewMode = 'scale' | 'triads' | 'tetrads';
-type Voicing = 'root' | '1st' | '2nd' | '3rd';
 
 type Props = {
   rootPc: number;
   intervals: number[];
   scaleId: ScaleId;
+  degreeNames: string[]; // spelled note name for each scale degree
   labelMode: LabelMode;
   colorMode: ColorMode;
-  preferSharps?: boolean;
-  viewMode: ViewMode;
-  triadDegrees: number[] | null;
-  progressionNumerals: number[] | null;
-  chordQualities: ChordQuality[];
+  chordSize: ChordSize | null; // null = scale mode
+  chordRootDegree: number; // the chord shown when no progression is active
+  progressionNumerals: number[] | null; // chord roots of the active progression
+  inversion: Inversion;
   currentStep: number | null;
-  onStepChange: (step: number | null) => void;
-  voicing: Voicing;
   fadeInactiveKeys?: boolean;
 };
 
@@ -36,16 +34,8 @@ type Props = {
 const MONO_ROOT = '#f5f7fa';
 const MONO_TONE = '#8d949c';
 
-// Progression colors (matches fretboard)
-const PROGRESSION_COLORS = [
-  '#EA3F75', // I - pink
-  '#FF7A66', // ii/II - coral
-  '#7A73EF', // iii/III - violet
-  '#4281EA', // IV/iv - blue
-  '#00D4FF', // V/v - cyan
-  '#00FFC8', // vi/VI - mint
-  '#39FF88', // vii/VII - green
-];
+// Chord voicings put their bass note at or above C3, so they always fit on the keyboard
+const VOICING_LOWEST_MIDI = 48;
 
 // Key info for rendering
 type KeyInfo = {
@@ -85,217 +75,69 @@ export default function PianoKeyboard({
   rootPc,
   intervals,
   scaleId,
+  degreeNames,
   labelMode,
   colorMode,
-  preferSharps = true,
-  viewMode,
-  triadDegrees,
+  chordSize,
+  chordRootDegree,
   progressionNumerals,
-  chordQualities,
+  inversion,
   currentStep,
-  onStepChange,
-  voicing,
   fadeInactiveKeys = false,
 }: Props) {
   const scale = SCALES[scaleId];
   const degreeColors = getScaleDegreeColors(scaleId);
-  const scalePcSet = useMemo(() => scaleSet(rootPc, intervals), [rootPc, intervals]);
+  const colorForDegree = (degree: number) =>
+    degreeColors[Math.min(Math.max(degree, 1) - 1, degreeColors.length - 1)];
+  const isMultiChordProgression = progressionNumerals !== null && progressionNumerals.length > 1;
 
-  const isProgressionMode = progressionNumerals !== null && progressionNumerals.length > 0;
-  const useTetrads = viewMode === 'tetrads';
-
-  // Helper to get chord degrees with inversion applied (same as fretboard)
-  const getChordDegrees = useCallback((chordRoot: number): number[] => {
-    const n = intervals.length;
-    const rootIdx = chordRoot - 1;
-    const thirdIdx = (rootIdx + 2) % n;
-    const fifthIdx = (rootIdx + 4) % n;
-    const seventhIdx = (rootIdx + 6) % n;
-
-    let degrees: number[];
-    if (useTetrads) {
-      degrees = [rootIdx + 1, thirdIdx + 1, fifthIdx + 1, seventhIdx + 1];
-    } else {
-      degrees = [rootIdx + 1, thirdIdx + 1, fifthIdx + 1];
-    }
-
-    const inversionAmount =
-      voicing === '1st' ? 1 :
-      voicing === '2nd' ? 2 :
-      voicing === '3rd' ? 3 : 0;
-
-    const rotated = [...degrees.slice(inversionAmount), ...degrees.slice(0, inversionAmount)];
-    return rotated;
-  }, [intervals.length, useTetrads, voicing]);
-
-  // Get all active degrees based on mode
-  const activeDegrees = useMemo((): Set<number> => {
-    if (isProgressionMode && progressionNumerals) {
-      const allDegrees = new Set<number>();
-      for (const chordRoot of progressionNumerals) {
-        const degrees = getChordDegrees(chordRoot);
-        degrees.forEach(d => allDegrees.add(d));
-      }
-      return allDegrees;
-    }
-    if ((viewMode === 'triads' || viewMode === 'tetrads') && triadDegrees) {
-      return new Set(triadDegrees);
-    }
-    // Scale mode: all scale degrees
-    return new Set(Array.from({ length: intervals.length }, (_, i) => i + 1));
-  }, [isProgressionMode, progressionNumerals, viewMode, triadDegrees, intervals.length, getChordDegrees]);
-
-  // Map degrees to progression chord indices (for coloring)
-  const degreeToProgressionChords = useMemo(() => {
-    if (!isProgressionMode || !progressionNumerals) return null;
+  // Chord modes light one voicing per chord, so inversions are visible: MIDI note -> chord indexes.
+  // Null in scale mode, where every scale tone is lit in both octaves.
+  const chordsByMidi = useMemo((): Map<number, number[]> | null => {
+    if (chordSize === null) return null;
     const map = new Map<number, number[]>();
-    progressionNumerals.forEach((chordRoot, chordIndex) => {
-      const degrees = getChordDegrees(chordRoot);
-      degrees.forEach((deg) => {
-        const existing = map.get(deg) ?? [];
-        if (!existing.includes(chordIndex)) {
-          map.set(deg, [...existing, chordIndex]);
-        }
-      });
+    (progressionNumerals ?? [chordRootDegree]).forEach((root, chordIndex) => {
+      const degrees = getChordDegrees(intervals.length, root, chordSize, inversion);
+      for (const midi of getChordVoicingMidi(rootPc, intervals, degrees, VOICING_LOWEST_MIDI)) {
+        map.set(midi, [...(map.get(midi) ?? []), chordIndex]);
+      }
     });
     return map;
-  }, [isProgressionMode, progressionNumerals, getChordDegrees]);
-
-  // Check if a pitch class is active
-  const isKeyActive = useCallback((pc: number): boolean => {
-    if (!scalePcSet.has(pc)) return false;
-    const degree = pcToDegree(pc, rootPc, intervals);
-    if (degree === 0) return false;
-    return activeDegrees.has(degree);
-  }, [scalePcSet, rootPc, intervals, activeDegrees]);
-
-  // Get the degree for a pitch class
-  const getKeyDegree = useCallback((pc: number): number => {
-    return pcToDegree(pc, rootPc, intervals);
-  }, [rootPc, intervals]);
-
-  // Get color for a key
-  const getKeyColor = useCallback((pc: number, isActive: boolean): string | null => {
-    if (!isActive) return null;
-
-    const degree = getKeyDegree(pc);
-    if (degree === 0) return null;
-
-    const isRoot = degree === 1;
-    const isMultiChordProgression = progressionNumerals !== null && progressionNumerals.length > 1;
-
-    if (colorMode === 'mono') {
-      return isRoot ? MONO_ROOT : MONO_TONE;
-    }
-
-    if (isMultiChordProgression && degreeToProgressionChords) {
-      const chordIndices = degreeToProgressionChords.get(degree) ?? [0];
-      return PROGRESSION_COLORS[chordIndices[0] % PROGRESSION_COLORS.length];
-    }
-
-    return degreeColors[Math.min(Math.max(degree, 1) - 1, degreeColors.length - 1)];
-  }, [getKeyDegree, colorMode, progressionNumerals, degreeToProgressionChords, degreeColors]);
-
-  // Get opacity for step mode
-  const getKeyOpacity = useCallback((pc: number): number => {
-    if (currentStep === null || !degreeToProgressionChords) return 1;
-
-    const degree = getKeyDegree(pc);
-    if (degree === 0) return 1;
-
-    const chordIndices = degreeToProgressionChords.get(degree) ?? [];
-    return chordIndices.includes(currentStep) ? 1 : 0.2;
-  }, [currentStep, degreeToProgressionChords, getKeyDegree]);
-
-  // Get label for a key
-  const getKeyLabel = useCallback((pc: number, isActive: boolean): string | null => {
-    if (!isActive) return null;
-
-    const degree = getKeyDegree(pc);
-    if (degree === 0) return null;
-
-    if (labelMode === 'degree') {
-      return scale.degreeLabels[degree - 1] ?? String(degree);
-    }
-    return pcToName(pc, preferSharps);
-  }, [getKeyDegree, labelMode, scale.degreeLabels, preferSharps]);
-
-  // Build legend data for multi-chord progressions (same as fretboard)
-  const legendData = isProgressionMode && progressionNumerals && progressionNumerals.length > 1
-    ? progressionNumerals.map((chordRoot, index) => {
-        const quality = chordQualities[chordRoot - 1] ?? 'maj';
-        const chordRootPc = normalizePc(rootPc + intervals[chordRoot - 1]);
-        const rootName = pcToName(chordRootPc, preferSharps);
-
-        // Get chord suffix
-        const suffixMap: Record<string, string> = {
-          'maj': '', 'min': 'm', 'dim': '°', 'aug': '+',
-          'maj7': 'maj7', 'min7': 'm7', 'dom7': '7', 'dim7': '°7',
-          'minMaj7': 'mM7', 'aug7': '+7', 'half-dim': 'ø7'
-        };
-        const chordName = `${rootName}${suffixMap[quality] ?? ''}`;
-
-        const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
-        let romanNumeral = numerals[chordRoot - 1] ?? String(chordRoot);
-        if (['min', 'dim', 'min7', 'dim7', 'half-dim', 'minMaj7'].includes(quality)) {
-          romanNumeral = romanNumeral.toLowerCase();
-        }
-
-        let qualitySymbol = '';
-        if (quality === 'dim' || quality === 'dim7') qualitySymbol = '°';
-        else if (quality === 'aug' || quality === 'aug7') qualitySymbol = '+';
-        else if (quality === 'half-dim') qualitySymbol = 'ø';
-
-        return {
-          chordRoot,
-          color: PROGRESSION_COLORS[index % PROGRESSION_COLORS.length],
-          romanNumeral,
-          qualitySymbol,
-          chordName,
-          index,
-        };
-      })
-    : null;
-
-  const handlePrevStep = useCallback(() => {
-    if (!progressionNumerals) return;
-    if (currentStep === null) {
-      onStepChange(progressionNumerals.length - 1);
-    } else if (currentStep === 0) {
-      onStepChange(null);
-    } else {
-      onStepChange(currentStep - 1);
-    }
-  }, [progressionNumerals, currentStep, onStepChange]);
-
-  const handleNextStep = useCallback(() => {
-    if (!progressionNumerals) return;
-    if (currentStep === null) {
-      onStepChange(0);
-    } else if (currentStep >= progressionNumerals.length - 1) {
-      onStepChange(null);
-    } else {
-      onStepChange(currentStep + 1);
-    }
-  }, [progressionNumerals, currentStep, onStepChange]);
-
-  const handleShowAll = useCallback(() => {
-    onStepChange(null);
-  }, [onStepChange]);
+  }, [chordSize, progressionNumerals, chordRootDegree, intervals, inversion, rootPc]);
 
   // Render a single key
   const renderKey = (key: KeyInfo) => {
-    // isInSet = key belongs to current display set (scale tones or chord tones)
-    const isInSet = isKeyActive(key.pc);
-    const isRoot = getKeyDegree(key.pc) === 1 && isInSet;
-    const color = getKeyColor(key.pc, isInSet);
-    const label = getKeyLabel(key.pc, isInSet);
+    const degree = pcToDegree(key.pc, rootPc, intervals);
+    const chordIndices = chordsByMidi?.get(key.midiNote) ?? null;
+
+    // isInSet = key belongs to current display set (scale tones or chord voicing notes)
+    const isInSet = chordsByMidi ? chordIndices !== null : degree > 0;
+    const isRoot = isInSet && degree === 1;
+
+    let color: string | null = null;
+    if (isInSet) {
+      if (colorMode === 'mono') {
+        color = isRoot ? MONO_ROOT : MONO_TONE;
+      } else if (isMultiChordProgression && chordIndices && progressionNumerals) {
+        // Same rule as the fretboard: the color of the chord's root degree
+        color = colorForDegree(progressionNumerals[chordIndices[0]]);
+      } else {
+        color = colorForDegree(degree);
+      }
+    }
+
+    const label = !isInSet
+      ? null
+      : labelMode === 'degree'
+      ? scale.degreeLabels[degree - 1] ?? String(degree)
+      : degreeNames[degree - 1] ?? pcToName(key.pc);
 
     // Determine if this key should be faded (Focus mode + not in set)
     const shouldFade = fadeInactiveKeys && !isInSet;
 
-    // Only compute step-mode opacity for in-set keys; faded keys use CSS opacity
-    const opacity = shouldFade ? undefined : (isInSet ? getKeyOpacity(key.pc) : 1);
+    // Step mode dims keys outside the current chord; faded keys use CSS opacity
+    const stepOpacity = currentStep !== null && chordIndices && !chordIndices.includes(currentStep) ? 0.2 : 1;
+    const opacity = shouldFade ? undefined : (isInSet ? stepOpacity : 1);
 
     const keyClass = key.isBlack ? 'piano-key piano-key--black' : 'piano-key piano-key--white';
     const activeClass = isInSet ? 'piano-key--active' : '';
@@ -312,6 +154,7 @@ export default function PianoKeyboard({
         } as React.CSSProperties}
         data-note={key.noteName}
         data-octave={key.octave}
+        onClick={() => playNote(key.midiNote)}
       >
         {label && <span className="piano-key__label">{label}</span>}
       </div>
@@ -332,29 +175,6 @@ export default function PianoKeyboard({
           </div>
         </div>
       </div>
-      {legendData && (
-        <div className="progression-legend">
-          <div className="legend-chords">
-            {legendData.map((chord, i) => (
-              <div
-                key={chord.chordRoot}
-                className={`legend-chord ${currentStep === i ? 'legend-chord--active' : ''} ${currentStep !== null && currentStep !== i ? 'legend-chord--dimmed' : ''}`}
-                onClick={() => onStepChange(currentStep === i ? null : i)}
-              >
-                <span className="legend-dot" style={{ background: chord.color }} />
-                <span className="legend-numeral">{chord.romanNumeral}{chord.qualitySymbol}</span>
-                <span className="legend-name">({chord.chordName})</span>
-                {i < legendData.length - 1 && <span className="legend-arrow">→</span>}
-              </div>
-            ))}
-          </div>
-          <div className="step-controls">
-            <button className="step-btn" onClick={handlePrevStep} title="Previous chord">◀</button>
-            <button className="step-btn step-btn--all" onClick={handleShowAll} title="Show all chords">All</button>
-            <button className="step-btn" onClick={handleNextStep} title="Next chord">▶</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

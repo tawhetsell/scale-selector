@@ -1,19 +1,20 @@
-// Returns standard tuning pitch classes (lowest string first)
+// Returns standard tuning as open-string MIDI note numbers (lowest string first).
+// MIDI numbers carry the octave, so notes on different strings can be compared by pitch.
 // If dropTuning is true, the lowest string is tuned down a whole step
 export function getTuningPreset(strings: number, dropTuning: boolean = false): number[] {
   let tuning: number[];
   switch (strings) {
     case 6:
-      tuning = [4, 9, 2, 7, 11, 4]; // E A D G B E
+      tuning = [40, 45, 50, 55, 59, 64]; // E2 A2 D3 G3 B3 E4
       break;
     case 7:
-      tuning = [11, 4, 9, 2, 7, 11, 4]; // B E A D G B E
+      tuning = [35, 40, 45, 50, 55, 59, 64]; // B1 E2 A2 D3 G3 B3 E4
       break;
     case 8:
-      tuning = [6, 11, 4, 9, 2, 7, 11, 4]; // F# B E A D G B E
+      tuning = [30, 35, 40, 45, 50, 55, 59, 64]; // F#1 B1 E2 A2 D3 G3 B3 E4
       break;
     case 9:
-      tuning = [1, 6, 11, 4, 9, 2, 7, 11, 4]; // C# F# B E A D G B E (common)
+      tuning = [25, 30, 35, 40, 45, 50, 55, 59, 64]; // C#1 F#1 B1 E2 A2 D3 G3 B3 E4 (common)
       break;
     default:
       throw new Error("Supported strings: 6–9");
@@ -21,7 +22,7 @@ export function getTuningPreset(strings: number, dropTuning: boolean = false): n
 
   if (dropTuning) {
     // Drop the lowest string by a whole step (2 semitones)
-    tuning[0] = (tuning[0] - 2 + 12) % 12;
+    tuning[0] -= 2;
   }
 
   return tuning;

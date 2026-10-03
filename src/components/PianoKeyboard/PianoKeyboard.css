@@ -36,6 +36,20 @@
   pointer-events: none;
 }
 
+/* Every key plays its note when clicked */
+.piano-key {
+  cursor: pointer;
+  user-select: none;
+}
+
+.piano-key--white:active {
+  filter: brightness(0.9);
+}
+
+.piano-key--black:active {
+  filter: brightness(1.8);
+}
+
 /* ========================================
    WHITE KEYS - Soft ivory/off-white surface
    ======================================== */

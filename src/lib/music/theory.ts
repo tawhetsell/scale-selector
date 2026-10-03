@@ -11,25 +11,28 @@ export function pcToDegree(pc: number, rootPc: number, intervals: number[]): num
   return idx >= 0 ? idx + 1 : 0;
 }
 
-export type Marker = { stringIndex: number; fret: number; pc: number; degree: number };
+// stringIndex 0 is the lowest-pitched string; midi is the note's actual pitch.
+export type Marker = { stringIndex: number; fret: number; pc: number; degree: number; midi: number };
 
+// openMidi: open-string MIDI note numbers, lowest string first (see getTuningPreset)
 export function computeFretMap(
-  openPcs: number[],
+  openMidi: number[],
   maxFrets: number,
   rootPc: number,
   intervals: number[]
 ): Marker[] {
   const scale = scaleSet(rootPc, intervals);
   const out: Marker[] = [];
-  openPcs.forEach((openPc, sIdx) => {
+  openMidi.forEach((openNote, sIdx) => {
     for (let f = 0; f <= maxFrets; f++) {
-      const pc = normalizePc(openPc + f);
+      const pc = normalizePc(openNote + f);
       if (scale.has(pc)) {
         out.push({
           stringIndex: sIdx,
           fret: f,
           pc,
           degree: pcToDegree(pc, rootPc, intervals),
+          midi: openNote + f,
         });
       }
     }

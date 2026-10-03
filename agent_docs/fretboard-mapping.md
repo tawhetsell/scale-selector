@@ -1,96 +1,98 @@
 # Fretboard Mapping
 
-This document explains how tunings, fret positions, and markers are computed and rendered.
+This document explains how tunings, fret positions and markers are computed and rendered. Behavior was verified on 2026-10-03; open issues are tracked in roadmap.md.
+
+## Orientation (intentional)
+
+- String index 0 is the lowest-pitched string (the low E on a 6-string), and it is drawn at the **bottom**.
+- The highest-pitched string is drawn at the top. This mirrors a player's view looking down at the neck.
+- A higher index means a higher pitch and a higher position on screen. Don't flip the drawing.
 
 ## Tuning Presets (tunings.ts)
 
-`getTuningPreset(strings, dropTuning)` returns an array of pitch classes for the open strings, from lowest (thickest) to highest (thinnest):
+`getTuningPreset(strings, dropTuning)` returns the open strings as MIDI note numbers, lowest (thickest) string first:
 
-| Strings | Standard Tuning              | Example                    |
-|---------|------------------------------|----------------------------|
-| 6       | [4, 9, 2, 7, 11, 4]          | E A D G B E                |
-| 7       | [11, 4, 9, 2, 7, 11, 4]      | B E A D G B E              |
-| 8       | [6, 11, 4, 9, 2, 7, 11, 4]   | F# B E A D G B E           |
-| 9       | [1, 6, 11, 4, 9, 2, 7, 11, 4]| C# F# B E A D G B E        |
+| Strings | MIDI | Notes |
+|---------|------|-------|
+| 6 | [40, 45, 50, 55, 59, 64] | E2 A2 D3 G3 B3 E4 |
+| 7 | [35, 40, 45, 50, 55, 59, 64] | B1 + 6-string |
+| 8 | [30, 35, 40, 45, 50, 55, 59, 64] | F#1 B1 + 6-string |
+| 9 | [25, 30, 35, 40, 45, 50, 55, 59, 64] | C#1 F#1 B1 + 6-string |
 
-**Drop tuning**: If `dropTuning=true`, the lowest string is lowered by 2 semitones (whole step):
-```ts
-tuning[0] = (tuning[0] - 2 + 12) % 12;  // e.g., E(4) -> D(2)
-```
+The UI offers 6, 7 and 8 strings; the 9-string preset exists but isn't exposed.
+
+**Drop tuning**: if `dropTuning=true`, the lowest string is lowered by 2 semitones (e.g. 40 → 38, E2 → D2).
+
+MIDI numbers carry the octave, so notes on different strings can be compared by pitch. The pitch class is `normalizePc(midi)`.
 
 ## Fret Map Computation (theory.ts)
 
-`computeFretMap(openPcs, maxFrets, rootPc, intervals)` generates all markers:
+`computeFretMap(openMidi, maxFrets, rootPc, intervals)` generates all markers:
 
-1. Build a `Set` of pitch classes in the scale: `scaleSet(rootPc, intervals)`
+1. Build a `Set` of the scale's pitch classes with `scaleSet(rootPc, intervals)`.
 2. For each string (index `sIdx`) and fret (0 to maxFrets):
-   - Compute the pitch class: `pc = normalizePc(openPc + fret)`
-   - If `pc` is in the scale set, create a marker
+   - Compute `midi = openMidi[sIdx] + fret` and `pc = normalizePc(midi)`.
+   - If `pc` is in the scale set, create a marker.
 
 **Marker interface**:
 ```ts
 type Marker = {
-  stringIndex: number;  // 0 = lowest string (thickest)
+  stringIndex: number;  // 0 = lowest-pitched string, drawn at the bottom
   fret: number;         // 0 = open string
   pc: number;           // pitch class 0-11
   degree: number;       // scale degree 1-7 (or more)
+  midi: number;         // actual pitch
 };
 ```
 
-`pcToDegree(pc, rootPc, intervals)` finds which scale degree a pitch class corresponds to (returns 0 if not in scale).
+`pcToDegree(pc, rootPc, intervals)` finds which scale degree a pitch class corresponds to. It returns 0 if the pitch class isn't in the scale.
 
-## Chord Shape Finding (Fretboard.tsx)
+## Which Markers Are Drawn (Fretboard.tsx)
 
-`findChordShapesForInversion(markers, chordDegrees, targetBassDegree)` finds playable chord shapes:
+Fretboard builds a `display` object: the markers to draw, the bass-ring keys, the anchor key, the accent degree, and which progression chords contain each degree.
 
-1. Filter markers to those matching chord degrees
-2. Find all markers with the target bass degree (determined by voicing/inversion)
-3. For each bass marker, try to build a shape:
-   - Bass marker defines the lowest string
-   - Find chord tones on adjacent higher strings within a 4-fret span
-   - Prefer unused degrees, then notes closer to the shape center
-4. Return only markers that belong to valid shapes
+- **Scale mode:** all markers.
+- **Single chord:** markers that belong to a shape from `findChordShapes()`. Each shape's first marker (its bass) gets the thick ring.
+- **Progression:**
+  - Shows the tones of every chord inside the position window.
+  - Each chord's bass ring goes on `findLowestMarker()` among the window's markers.
 
-**Inversion logic**:
-- Root position: bass = chord[0] (root)
-- 1st inversion: bass = chord[1] (3rd)
-- 2nd inversion: bass = chord[2] (5th)
-- 3rd inversion: bass = chord[3] (7th, tetrads only)
+## Chord Shape Finding (voicings.ts)
 
-## Position Mode (CAGED System)
+`findChordShapes(markers, chordDegrees, bassDegree, maxSpan = 4)` returns playable shapes. Each shape:
+- starts from a marker with the bass degree;
+- adds one note on each next *higher-pitched* string (`stringIndex + 1`, `+ 2`, …);
+- keeps every note above the bass in pitch (`midi > bass.midi`) and the whole shape within a 4-fret span;
+- must contain every chord degree.
 
-When a progression is active, `usePositionMode=true` enables position-based filtering:
+A depth-first search keeps the smallest-span shape for each bass marker, so there is at most one shape per bass note. With 12 frets, E major triads give one shape per string set for each inversion.
 
-1. **Find the position**: Locate the scale root (degree 1) on the selected root string (4th, 5th, or 6th)
-2. **Define fret range**: 5-fret span centered around the root position
-3. **Filter markers**: Only show markers within the fret range
+**Inversion → bass degree**: `getChordDegrees(..., inversion)[0]`. Root = root, 1st = 3rd, 2nd = 5th, 3rd = 7th (tetrads only).
 
-The "ROOT STR" dropdown selects which string anchors the position:
-```ts
-const rootStringIndex = strings - rootString;  // Convert guitar string # to array index
-```
+## Position Window (progression mode)
 
-Example: On 6-string guitar, ROOT STR = 5 means:
-- `rootStringIndex = 6 - 5 = 1` (the A string, second from lowest)
-- Find degree 1 on that string, create a 5-fret box around it
+When a progression is active:
+1. **Convert ROOT STR to an index.** `rootStringIndex = strings - rootString` converts the string number (4, 5 or 6, counted from the high string) into an array index. On a 6-string, ROOT STR 5 gives index 1, the A string.
+2. **Find the window.** `getPositionWindow(markers, rootStringIndex)` finds degree 1 on that string, preferring the first one at frets 1–12. It returns `minFret = max(0, rootFret - 2)` and `maxFret = minFret + 5`.
+3. **Fill it.** Show the chord tones of every chord in the progression inside the window.
 
-## Bass Note Identification
+This is a fixed box around the root, not true CAGED shapes.
 
-In progression mode, bass notes get thick white outlines:
-1. `positionBassMarkerKeys`: Set of `"stringIndex:fret"` keys for bass notes
-2. For each chord in progression, find the bass degree (first note after inversion rotation)
-3. Choose the lowest-pitched marker (highest stringIndex, then lowest fret)
+## Bass Notes and Anchor (progression mode)
 
-The key root anchor (degree 1 on root string) gets an additional halo effect.
+- `findLowestMarker(markers, degree)` returns the marker with the lowest `midi`; on a unison, the lower string wins.
+- Each chord's bass degree, after inversion, gets one thick ring on its lowest instance in the window.
+- The key-root anchor (degree 1 on the ROOT STR string, inside the window) gets a thick ring and a halo.
 
 ## Rendering (SVG)
 
-The fretboard is rendered as SVG with:
-- String lines (horizontal, `stringGap=28px` apart)
-- Fret lines (vertical, `fretWidth` varies by maxFrets)
-- Nut (white rectangle at fret 0)
-- Inlays (dots at frets 3, 5, 7, 9, 12, 15, 17, 19, 21, 24)
-- Markers (circles with degree/note labels)
+- **Strings:** horizontal lines, `stringGap = 28` units apart.
+- **Frets:** `fretWidth` is 68 for 12 frets and 48 for 24. Every 12th fret line is brighter.
+- **Open strings:** open-string markers sit to the left of the nut (`openSpacing`).
+- **Nut:** a white bar at fret 0.
+- **Inlays:** dots below the strings at frets 3, 5, 7, 9, 12 (double), 15, 17, 19, 21 and 24 (double).
+- **Markers:** circles (radius 11, or 12 with a thick ring) labeled with the spelled note name or the degree label.
+- **Labels:** no string names or fret numbers are drawn.
 
 Marker positions:
 ```ts
@@ -98,9 +100,11 @@ const fretX = (fret) => nutX + fret * fretWidth;
 const stringY = (sIdx) => padding + (strings - 1 - sIdx) * stringGap;
 ```
 
-Note: `stringY` inverts the index so the highest string (thinnest) is at the top visually.
+`stringY` puts index 0 (the lowest pitch) at the bottom. The SVG scales with `width: 100%`; its dimensions are viewBox units, not pixels.
 
 ## File References
-- `src/lib/music/tunings.ts` — tuning presets, drop tuning
+- `src/lib/music/tunings.ts` — tuning presets (MIDI), drop tuning
 - `src/lib/music/theory.ts` — computeFretMap(), scaleSet(), pcToDegree()
-- `src/components/Fretboard/Fretboard.tsx` — SVG rendering, chord shape finding, position mode
+- `src/lib/music/voicings.ts` — findChordShapes(), getPositionWindow(), findLowestMarker(), getChordVoicingMidi()
+- `src/lib/music/voicings.test.ts` — shape, window, bass and voicing tests
+- `src/components/Fretboard/Fretboard.tsx` — marker selection, rings, SVG rendering

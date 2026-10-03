@@ -70,6 +70,22 @@ export const SCALES: Record<string, ScaleDef> = {
   augmentedTriad:   { id:'augmentedTriad',  name:'Triad Aug',           intervals:[0,4,8],          degreeLabels:['1','3','♯5'], group:'Triads' },
 };
 
+export type ParsedDegreeLabel = {
+  accidental: '' | 'b' | '#';
+  number: number;
+};
+
+/**
+ * Parses a degree label such as 'b3', '♯4' or '#2/♭3' (the first spelling wins).
+ * Note spelling and Roman numerals both follow these labels.
+ */
+export function parseDegreeLabel(label: string): ParsedDegreeLabel | null {
+  const match = /^([b♭#♯]?)(\d+)/.exec(label.split('/')[0]);
+  if (!match) return null;
+  const accidental = match[1] === '' ? '' : match[1] === 'b' || match[1] === '♭' ? 'b' : '#';
+  return { accidental, number: Number(match[2]) };
+}
+
 export type ScaleGroup = {
   label: string;
   scales: ScaleDef[];
