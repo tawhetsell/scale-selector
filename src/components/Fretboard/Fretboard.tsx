@@ -45,7 +45,10 @@ const STANDOUT_OUTLINE = '#ffffff';
 const markerKey = (m: Marker) => `${m.stringIndex}:${m.fret}`;
 
 const BASE_STRING_GAP = 28;
-const MAX_STRING_GAP = 48; // enough to fill a sideways phone; more stops looking like a neck
+// Larger screens stop looking like a neck past 48; a sideways phone needs more to fill its height
+const MAX_STRING_GAP = 48;
+const MAX_STRING_GAP_PHONE = 64;
+const PHONE_MAX_WIDTH = 900;
 const MAX_MARKER_SCALE = 1.4;
 
 export default function Fretboard({
@@ -77,21 +80,27 @@ export default function Fretboard({
 
   // In the full-screen view, spread the strings out to fill the container's height
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerAspect, setContainerAspect] = useState<number | null>(null);
+  const [containerBox, setContainerBox] = useState<{ width: number; aspect: number } | null>(null);
   useEffect(() => {
     const el = containerRef.current;
     if (!fitToContainer || !el) return;
     const observer = new ResizeObserver(() => {
-      if (el.clientWidth > 0) setContainerAspect(Math.round((el.clientHeight / el.clientWidth) * 100) / 100);
+      if (el.clientWidth > 0) {
+        setContainerBox({
+          width: el.clientWidth,
+          aspect: Math.round((el.clientHeight / el.clientWidth) * 100) / 100,
+        });
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, [fitToContainer]);
   const fittedGap =
-    fitToContainer && containerAspect
-      ? (containerAspect * width - padding * 2 - inlayGutter) / (strings - 1)
+    fitToContainer && containerBox
+      ? (containerBox.aspect * width - padding * 2 - inlayGutter) / (strings - 1)
       : BASE_STRING_GAP;
-  const stringGap = Math.min(Math.max(fittedGap, BASE_STRING_GAP), MAX_STRING_GAP);
+  const maxGap = containerBox && containerBox.width < PHONE_MAX_WIDTH ? MAX_STRING_GAP_PHONE : MAX_STRING_GAP;
+  const stringGap = Math.min(Math.max(fittedGap, BASE_STRING_GAP), maxGap);
   const markerScale = Math.min(stringGap / BASE_STRING_GAP, MAX_MARKER_SCALE);
 
   const stringAreaHeight = padding * 2 + (strings - 1) * stringGap;

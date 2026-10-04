@@ -102,7 +102,7 @@ const fretX = (fret) => nutX + fret * fretWidth;
 const stringY = (sIdx) => padding + (strings - 1 - sIdx) * stringGap;
 ```
 
-`stringY` puts index 0 (the lowest pitch) at the bottom. The SVG scales with `width: 100%`; its dimensions are viewBox units, not pixels. In the full-screen view, `fitToContainer` makes Fretboard watch its container with a ResizeObserver and widen `stringGap` (28 → at most 48) so the board's shape matches the free space; markers, labels and the anchor halo scale with it (up to 1.4×). The SVG also gets `height: 100%`, so it still shrinks to fit when space is short.
+`stringY` puts index 0 (the lowest pitch) at the bottom. The SVG scales with `width: 100%`; its dimensions are viewBox units, not pixels. In the full-screen view, `fitToContainer` makes Fretboard watch its container with a ResizeObserver and widen `stringGap` (28 → at most 64 when the container is under 900px wide, 48 otherwise) so the board's shape matches the free space; markers, labels and the anchor halo scale with it (up to 1.4×). The SVG also gets `height: 100%`, so it still shrinks to fit when space is short.
 
 ## File References
 - `src/lib/music/tunings.ts` — tuning presets (MIDI), drop tuning
