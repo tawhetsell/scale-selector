@@ -126,8 +126,8 @@ Automatic resets (App.tsx effects and handlers):
 ## Full-Screen View (hooks/useFullscreen.ts)
 
 - **Entering:** the top panel's full-screen button calls `useFullscreen(stageRef).enter()`. This adds `stage__visualization--fullscreen` to the stage element, which becomes a fixed, full-page black layer containing:
-  - an exit button (✕) in its own top row;
-  - the instrument, which flexes to fill the space (the fretboard SVG keeps its shape and shrinks to fit a short screen);
+  - an exit button (✕) floating in the top-right corner; the layer has equal top and bottom padding (52px) so the instrument stays centered;
+  - the instrument, which flexes to fill the space. The fretboard gets `fitToContainer`: it measures its box and spreads the strings apart (gap 28 up to 48 viewBox units, notes up to 1.4× larger) to fill the height, as on a sideways phone;
   - the progression legend, if there is one.
 - **Real fullscreen:** where the browser allows it (Android, desktop), the stage also enters real fullscreen (`requestFullscreen`) and asks for landscape (`screen.orientation.lock`). iPhone only allows real fullscreen for videos, so there the layer just covers the page.
 - **Exiting:** the ✕ button, Esc, or leaving real fullscreen (e.g. Android's back gesture) all close the view. Closing also exits real fullscreen and unlocks the orientation.

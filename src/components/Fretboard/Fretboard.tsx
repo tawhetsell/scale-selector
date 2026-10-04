@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { computeFretMap, type Marker } from '../../lib/music/theory';
 import { pcToName } from '../../lib/music/notes';
 import { getChordDegrees, type ChordSize, type Inversion } from '../../lib/music/chords';
@@ -27,6 +27,7 @@ type Props = {
   inversion: Inversion;
   rootString: RootString; // anchors the position window in progression mode
   currentStep: number | null;
+  fitToContainer?: boolean; // full-screen view: stretch to the container's height
 };
 
 type Display = {
@@ -43,6 +44,10 @@ const STANDOUT_OUTLINE = '#ffffff';
 
 const markerKey = (m: Marker) => `${m.stringIndex}:${m.fret}`;
 
+const BASE_STRING_GAP = 28;
+const MAX_STRING_GAP = 48; // enough to fill a sideways phone; more stops looking like a neck
+const MAX_MARKER_SCALE = 1.4;
+
 export default function Fretboard({
   openStrings,
   maxFrets,
@@ -58,18 +63,38 @@ export default function Fretboard({
   inversion,
   rootString,
   currentStep,
+  fitToContainer = false,
 }: Props) {
   const strings = openStrings.length;
   const isCompact = maxFrets <= 12;
   const fretWidth = isCompact ? 68 : 48;
-  const stringGap = 28;
   const padding = isCompact ? 24 : 24;
   const openSpacing = isCompact ? 60 : 48;
   const nutX = padding + openSpacing;
   const stringsEnd = nutX + maxFrets * fretWidth;
   const width = stringsEnd + padding;
-  const stringAreaHeight = padding * 2 + (strings - 1) * stringGap;
   const inlayGutter = 16; // Space below strings for fret marker dots
+
+  // In the full-screen view, spread the strings out to fill the container's height
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerAspect, setContainerAspect] = useState<number | null>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!fitToContainer || !el) return;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth > 0) setContainerAspect(Math.round((el.clientHeight / el.clientWidth) * 100) / 100);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fitToContainer]);
+  const fittedGap =
+    fitToContainer && containerAspect
+      ? (containerAspect * width - padding * 2 - inlayGutter) / (strings - 1)
+      : BASE_STRING_GAP;
+  const stringGap = Math.min(Math.max(fittedGap, BASE_STRING_GAP), MAX_STRING_GAP);
+  const markerScale = Math.min(stringGap / BASE_STRING_GAP, MAX_MARKER_SCALE);
+
+  const stringAreaHeight = padding * 2 + (strings - 1) * stringGap;
   const boardHeight = stringAreaHeight + inlayGutter;
   const totalHeight = boardHeight;
 
@@ -79,7 +104,7 @@ export default function Fretboard({
   );
   const degreeColors = getScaleDegreeColors(scaleId);
   const scale = SCALES[scaleId];
-  const markerFontSize = 'var(--marker-font-size, 10px)';
+  const markerFontSize = `calc(var(--marker-font-size, 10px) * ${markerScale})`;
   const colorForDegree = (degree: number) =>
     degreeColors[Math.min(Math.max(degree, 1) - 1, degreeColors.length - 1)];
 
@@ -149,7 +174,7 @@ export default function Fretboard({
   const inlayFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 
   return (
-    <div className="fretboard-container">
+    <div className="fretboard-container" ref={containerRef}>
       <svg width="100%" viewBox={`0 0 ${width} ${totalHeight}`} role="img" aria-label="Guitar fretboard">
         {/* board background */}
         <rect x={0} y={0} width={width} height={boardHeight} fill="#050505" rx={14} stroke="rgba(255, 255, 255, 0.2)" />
@@ -273,7 +298,7 @@ export default function Fretboard({
             strokeColor = STRING_COLOR;
             strokeWidth = hasThickStroke ? 3 : (isAccent ? 2.2 : 1.4);
           }
-          const radius = hasThickStroke ? 12 : 11;
+          const radius = (hasThickStroke ? 12 : 11) * markerScale;
 
           return (
             <g
@@ -287,7 +312,7 @@ export default function Fretboard({
                 <circle
                   cx={x}
                   cy={y}
-                  r={20}
+                  r={20 * markerScale}
                   fill="rgba(255, 255, 255, 0.15)"
                 />
               )}

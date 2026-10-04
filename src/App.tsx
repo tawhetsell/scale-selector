@@ -364,6 +364,7 @@ export default function App() {
                 inversion={inversion}
                 rootString={rootString}
                 currentStep={currentStep}
+                fitToContainer={isFullscreen}
               />
             ) : (
               <PianoKeyboard
