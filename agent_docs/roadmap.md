@@ -139,7 +139,6 @@ The phone layout (formerly item 1) is done as the full-screen view above.
   - `npm audit` reports 21 issues in dev tooling. They were there before Vitest was added.
 - **ESLint config:** `eslint.config.js` ignores `dist`, but the build output is `docs`.
 - **Dead code:** `src/Hello.tsx`, `src/assets/react.svg`, and `.app__subtitle` in App.css.
-- **.gitignore:** it lists CLAUDE.md, but CLAUDE.md is tracked.
 - **README screenshots:** they're commented out. Refresh `screenshots/` after the UI work.
 
 ## Decisions still open
