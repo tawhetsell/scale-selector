@@ -145,3 +145,23 @@ The phone layout (formerly item 1) is done as the full-screen view above.
 
 - **Deployment:** keep committing `docs/`, or deploy with a GitHub Actions workflow. The second option changes the repo structure.
 - **The defaults above:** any of them can be revisited.
+
+## Fixed on 2026-11-10
+
+Found in a code review plus a browser pass. Unit tests cover the `lib/music` changes; the rest was checked in the browser.
+
+- **Position window:** it no longer runs off a 12-fret neck. `getPositionWindow` takes `maxFrets`, prefers a root whose window fits, and otherwise slides the window down to the last fret.
+- **Step colors:** while stepping through a progression, all of the current chord's notes take its color on both instruments, and only its bass keeps the thick ring on the guitar.
+- **Piano root:** in single-chord mode the root styling follows the chord root, as the guitar's accent ring does.
+- **Degree labels:** shown with ♭ and ♯ throughout (`formatDegreeLabel`), and two-spelling labels such as "♯4/♭5" are drawn smaller so they fit the marker.
+- **Full-screen view:** the scroll position and keyboard focus are restored on exit, and the page behind is `inert` while it's open.
+- **Empty fretboard:** if no playable shape exists (two Enigmatic tetrads in Drop tuning), every chord tone is shown instead.
+- **State:** Mono returns after a progression is cleared, and CHORD keeps its setting across a scale without chords.
+- **Small fixes:** ROOT STR is disabled in piano view; legend chords work from the keyboard; focus rings are visible on the step, legend, exit and metronome controls; `.playwright-mcp/` is ignored.
+- A new `scales.test.ts` checks every scale's intervals and degree labels.
+
+Still open from that review:
+- ROOT STR offers only the 4th–6th strings on 7- and 8-string guitars.
+- Fret markers and piano keys can't be played from the keyboard (already in the backlog).
+- With all chords shown, a note shared by several chords takes the first chord's color, so a chord made only of shared notes has no color of its own on the board.
+- Naming choices to revisit: "Aeolian (Nat)", the Bebop Minor variant, and the repeated letters in Altered, Ultralocrian and Enigmatic.

@@ -42,6 +42,15 @@ export default function ProgressionLegend({ chords, currentStep, onStepChange }:
             key={i}
             className={`legend-chord ${currentStep === i ? 'legend-chord--active' : ''} ${currentStep !== null && currentStep !== i ? 'legend-chord--dimmed' : ''}`}
             onClick={() => onStepChange(currentStep === i ? null : i)}
+            role="button"
+            tabIndex={0}
+            aria-pressed={currentStep === i}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onStepChange(currentStep === i ? null : i);
+              }
+            }}
           >
             <span className="legend-dot" style={{ background: chord.color }} />
             <span className="legend-numeral">{chord.numeral}</span>

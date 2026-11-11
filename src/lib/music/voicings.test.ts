@@ -67,3 +67,23 @@ describe('getChordVoicingMidi', () => {
     expect(getChordVoicingMidi(0, cMajor, [5, 7, 2, 4], 48)).toEqual([55, 59, 62, 65]); // G7: G3 B3 D4 F4
   });
 });
+
+describe('getPositionWindow on a 12-fret neck', () => {
+  const windowAt = (rootPc: number, stringIndex: number) =>
+    getPositionWindow(computeFretMap(getTuningPreset(6), 12, rootPc, E_MAJOR), stringIndex, 12);
+
+  it('uses the open position when the octave root would run off the board', () => {
+    expect(windowAt(4, 0)).toEqual({ minFret: 0, maxFret: 5 }); // E on the low E string: frets 0 and 12
+    expect(windowAt(9, 1)).toEqual({ minFret: 0, maxFret: 5 }); // A on the A string
+  });
+
+  it('slides the window down to end at the last fret when no root fits', () => {
+    expect(windowAt(2, 0)).toEqual({ minFret: 7, maxFret: 12 }); // D on the low E string, fret 10
+    expect(windowAt(3, 0)).toEqual({ minFret: 7, maxFret: 12 }); // D#, fret 11
+  });
+
+  it('leaves windows that already fit unchanged', () => {
+    expect(windowAt(9, 0)).toEqual({ minFret: 3, maxFret: 8 }); // A on the low E string, fret 5
+    expect(windowAt(1, 0)).toEqual({ minFret: 7, maxFret: 12 }); // C#, fret 9
+  });
+});

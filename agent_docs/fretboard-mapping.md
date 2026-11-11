@@ -73,7 +73,7 @@ A depth-first search keeps the smallest-span shape for each bass marker, so ther
 
 When a progression is active:
 1. **Convert ROOT STR to an index.** `rootStringIndex = strings - rootString` converts the string number (4, 5 or 6, counted from the high string) into an array index. On a 6-string, ROOT STR 5 gives index 1, the A string.
-2. **Find the window.** `getPositionWindow(markers, rootStringIndex)` finds degree 1 on that string, preferring the first one at frets 1–12. It returns `minFret = max(0, rootFret - 2)` and `maxFret = minFret + 5`.
+2. **Find the window.** `getPositionWindow(markers, rootStringIndex, maxFrets)` finds degree 1 on that string, preferring the first one at frets 1–12 whose window fits on the neck. The window runs from two frets below the root to three above (six frets, clamped at the nut). On a 12-fret neck, E on the low E string therefore uses the open position (0–5) rather than fret 12. If no root fits (D on the low E string, fret 10), the window slides down to end at the last fret (7–12).
 3. **Fill it.** Show the chord tones of every chord in the progression inside the window.
 
 This is a fixed box around the root, not true CAGED shapes.

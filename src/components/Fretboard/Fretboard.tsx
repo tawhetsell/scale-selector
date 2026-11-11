@@ -4,7 +4,7 @@ import { pcToName } from '../../lib/music/notes';
 import { getChordDegrees, type ChordSize, type Inversion } from '../../lib/music/chords';
 import { findChordShapes, findLowestMarker, getPositionWindow } from '../../lib/music/voicings';
 import { getScaleDegreeColors, pickTextColor } from '../../lib/music/colors';
-import { SCALES } from '../../lib/music/scales';
+import { SCALES, formatDegreeLabel } from '../../lib/music/scales';
 import { playNote } from '../../lib/audio/synth';
 
 type LabelMode = 'degree' | 'letters';
@@ -36,6 +36,7 @@ type Display = {
   anchorKey: string | null; // thick ring + halo: key root on the root string (progression)
   accentDegree: number; // medium ring
   chordsByDegree: Map<number, number[]> | null; // progression chords containing each degree
+  stepBassKeys: (string | null)[] | null; // progression: each chord's bass note, by chord index
 };
 
 const INLAY_COLOR = '#b6bcc3';
@@ -114,18 +115,33 @@ export default function Fretboard({
   const degreeColors = getScaleDegreeColors(scaleId);
   const scale = SCALES[scaleId];
   const markerFontSize = `calc(var(--marker-font-size, 10px) * ${markerScale})`;
+  // Two-spelling labels such as '♯4/♭5' are wider than a marker at the normal size
+  const longLabelFontSize = `calc(var(--marker-font-size, 10px) * ${markerScale * 0.78})`;
   const colorForDegree = (degree: number) =>
     degreeColors[Math.min(Math.max(degree, 1) - 1, degreeColors.length - 1)];
 
   const display = useMemo((): Display => {
     if (chordSize === null) {
-      return { markers, bassKeys: new Set(), anchorKey: null, accentDegree: 1, chordsByDegree: null };
+      return { markers, bassKeys: new Set(), anchorKey: null, accentDegree: 1, chordsByDegree: null, stepBassKeys: null };
     }
 
     if (progressionNumerals === null) {
       // Single chord: playable shapes for the selected inversion, across the whole neck
       const degrees = getChordDegrees(intervals.length, chordRootDegree, chordSize, inversion);
       const shapes = findChordShapes(markers, degrees, degrees[0]);
+      if (shapes.length === 0) {
+        // No playable shape on this neck (rare): show every chord tone rather than a blank board
+        const tones = markers.filter((m) => degrees.includes(m.degree));
+        const bass = findLowestMarker(tones, degrees[0]);
+        return {
+          markers: tones,
+          bassKeys: new Set(bass ? [markerKey(bass)] : []),
+          anchorKey: null,
+          accentDegree: chordRootDegree,
+          chordsByDegree: null,
+          stepBassKeys: null,
+        };
+      }
       const inShape = new Set(shapes.flat().map(markerKey));
       return {
         markers: markers.filter((m) => inShape.has(markerKey(m))),
@@ -133,6 +149,7 @@ export default function Fretboard({
         anchorKey: null,
         accentDegree: chordRootDegree,
         chordsByDegree: null,
+        stepBassKeys: null,
       };
     }
 
@@ -146,18 +163,18 @@ export default function Fretboard({
     });
 
     const rootStringIndex = strings - rootString; // guitar string number -> index (0 = lowest string)
-    const fretWindow = getPositionWindow(markers, rootStringIndex);
+    const fretWindow = getPositionWindow(markers, rootStringIndex, maxFrets);
     const shown = markers.filter(
       (m) =>
         chordsByDegree.has(m.degree) &&
         (!fretWindow || (m.fret >= fretWindow.minFret && m.fret <= fretWindow.maxFret))
     );
 
-    const bassKeys = new Set<string>();
-    for (const degrees of chords) {
+    const stepBassKeys = chords.map((degrees) => {
       const bass = findLowestMarker(shown, degrees[0]);
-      if (bass) bassKeys.add(markerKey(bass));
-    }
+      return bass ? markerKey(bass) : null;
+    });
+    const bassKeys = new Set(stepBassKeys.filter((key): key is string => key !== null));
 
     const anchor = fretWindow
       ? shown.find((m) => m.stringIndex === rootStringIndex && m.degree === 1)
@@ -169,8 +186,9 @@ export default function Fretboard({
       anchorKey: anchor ? markerKey(anchor) : null,
       accentDegree: 1,
       chordsByDegree,
+      stepBassKeys,
     };
-  }, [markers, chordSize, progressionNumerals, intervals.length, chordRootDegree, inversion, strings, rootString]);
+  }, [markers, maxFrets, chordSize, progressionNumerals, intervals.length, chordRootDegree, inversion, strings, rootString]);
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
   const stringY = (sIdx: number) => padding + (strings - 1 - sIdx) * stringGap;
@@ -246,7 +264,11 @@ export default function Fretboard({
           const y = stringY(marker.stringIndex);
           const key = markerKey(marker);
           const isKeyRootAnchor = display.anchorKey === key;
-          const isBassNote = display.bassKeys.has(key);
+          // While stepping through a progression, only the current chord's bass keeps its ring
+          const isBassNote =
+            currentStep !== null && display.stepBassKeys
+              ? display.stepBassKeys[currentStep] === key
+              : display.bassKeys.has(key);
           const isAccent = marker.degree === display.accentDegree;
 
           // Shared tones belong to several chords; the first chord picks the color
@@ -258,7 +280,9 @@ export default function Fretboard({
           if (colorMode === 'mono') {
             fill = '#050505';
           } else if (chordIndices && progressionNumerals && progressionNumerals.length > 1) {
-            fill = colorForDegree(progressionNumerals[chordIndices[0]]);
+            // While stepping, the current chord's tones all take its color, shared tones included
+            const chordIndex = currentStep !== null && chordIndices.includes(currentStep) ? currentStep : chordIndices[0];
+            fill = colorForDegree(progressionNumerals[chordIndex]);
           } else {
             fill = colorForDegree(marker.degree);
           }
@@ -269,7 +293,7 @@ export default function Fretboard({
 
           const label =
             labelMode === 'degree'
-              ? scale.degreeLabels[marker.degree - 1] ?? String(marker.degree)
+              ? formatDegreeLabel(scale.degreeLabels[marker.degree - 1] ?? String(marker.degree))
               : degreeNames[marker.degree - 1] ?? pcToName(marker.pc);
 
           // Compute text color based on fill luminance for contrast
@@ -337,7 +361,7 @@ export default function Fretboard({
               <text
                 x={x}
                 y={y}
-                fontSize={markerFontSize}
+                fontSize={label.length > 3 ? longLabelFontSize : markerFontSize}
                 dominantBaseline="middle"
                 textAnchor="middle"
                 fill={textFill}

@@ -112,3 +112,11 @@
   width: 8px;
   height: 5px;
 }
+
+/* Visible keyboard focus; drawn inside each control because .metronome clips its overflow */
+.metronome__play:focus-visible,
+.metronome__arrow:focus-visible,
+.metronome__bpm-input:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: -2px;
+}

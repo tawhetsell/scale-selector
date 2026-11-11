@@ -71,7 +71,7 @@ getChordDegrees(7, 1, 3, 1); // [3, 5, 1] — 1st inversion, 3rd in the bass
 ## Progression Mode
 
 When PROGS is not None:
-- `activeProgression` is set. App switches to Color mode (Mono is disabled) and to Triads if the view was Scale.
+- `activeProgression` is set. Both instruments draw in color (Mono is disabled, and comes back when the progression is cleared), and App switches to Triads if the view was Scale.
 - DEGREE is disabled and ROOT STR is enabled.
 - On guitar, markers are limited to the position window anchored by ROOT STR (see fretboard-mapping.md).
 - Progressions with 2+ chords get the legend: App renders `ProgressionLegend` below either instrument.
@@ -85,7 +85,7 @@ Legend data comes from `describeChords()` in chords.ts, and colors from `getDegr
 
 **Color:**
 - **Scale or single chord:** degree colors from `DEGREE_COLOR_PALETTE` (colors.ts; see music-model.md).
-- **Multi-chord progression:** each note takes the color of the first chord, in progression order, that contains it. That color is the chord's root-degree color (ii uses the degree-2 color). Both instruments use this rule.
+- **Multi-chord progression:** each note takes the color of the first chord, in progression order, that contains it. That color is the chord's root-degree color (ii uses the degree-2 color). Both instruments use this rule. While stepping, every note of the current chord takes that chord's color (shared notes included), and on the guitar only the current chord's bass keeps its thick ring.
 
 **Mono:**
 - **Guitar:** markers are filled with the board color, so they appear as outlines only. Ringed notes get a brighter, thicker ring.

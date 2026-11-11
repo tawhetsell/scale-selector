@@ -110,6 +110,16 @@ export default function App() {
     updateInstrumentHeight();
   }, [isFullscreen, updateInstrumentHeight]);
 
+  // Keyboard focus moves to the exit button on entry (autoFocus) and back to the full-screen button on exit
+  const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
+  const wasFullscreen = useRef(false);
+  useEffect(() => {
+    if (wasFullscreen.current && !isFullscreen) {
+      fullscreenButtonRef.current?.focus({ preventScroll: true });
+    }
+    wasFullscreen.current = isFullscreen;
+  }, [isFullscreen]);
+
   const openStrings = useMemo(() => getTuningPreset(strings, dropTuning), [strings, dropTuning]);
   const rootPc = useMemo(() => nameToPc(rootName), [rootName]);
 
@@ -157,14 +167,16 @@ export default function App() {
     }));
   }, [chordSize, progressionNumerals, scale, degreeNames, scaleId]);
 
+  // CHORD keeps its setting while a scale without chords is selected; it shows None meanwhile
+  const shownViewMode: ViewMode = canShowTriads ? viewMode : 'scale';
+  // Progressions are always drawn in color; Mono comes back when the progression is cleared
+  const shownColorMode = isProgressionActive ? 'color' : colorMode;
+
   useEffect(() => {
-    if (!canShowTriads && viewMode !== 'scale') {
-      setViewMode('scale');
-    }
     if (chordRootDegree > scale.intervals.length) {
       setChordRootDegree(1);
     }
-  }, [canShowTriads, scale.intervals.length, chordRootDegree, viewMode]);
+  }, [scale.intervals.length, chordRootDegree]);
 
   // Reset the progression when the new scale doesn't have it
   useEffect(() => {
@@ -178,27 +190,24 @@ export default function App() {
     setCurrentStep(null);
   }, [selectedProgression]);
 
-  // When a progression is selected, default to triads view and color mode
+  // When a progression is selected, default to triads view
   useEffect(() => {
     if (isProgressionActive) {
       if (viewMode === 'scale') {
         setViewMode('triads');
       }
-      if (colorMode === 'mono') {
-        setColorMode('color');
-      }
     }
-  }, [isProgressionActive, viewMode, colorMode]);
+  }, [isProgressionActive, viewMode]);
 
   const degreeDisabled = !canShowTriads || viewMode === 'scale' || isProgressionActive;
 
   return (
     <div className="app">
-      <header className="app__header">
+      <header className="app__header" inert={isFullscreen}>
         <h1>Scale Selector</h1>
       </header>
 
-      <section className="panel">
+      <section className="panel" inert={isFullscreen}>
         {/* Row 1: SCALE, ROOT, STRINGS */}
         <label className="control">
           <span className="control__label">Scale</span>
@@ -234,7 +243,7 @@ export default function App() {
         <label className="control">
           <span className="control__label">Chord</span>
           <select
-            value={viewMode}
+            value={shownViewMode}
             onChange={(e) => {
               const next = e.target.value as ViewMode;
               setViewMode(next);
@@ -254,7 +263,7 @@ export default function App() {
           </select>
         </label>
 
-        {viewMode !== 'scale' && (
+        {shownViewMode !== 'scale' && (
           <>
             <label className="control">
               <span className="control__label">Degree</span>
@@ -292,7 +301,7 @@ export default function App() {
               <select
                 value={rootString}
                 onChange={(e) => setRootString(Number(e.target.value) as RootString)}
-                disabled={!isProgressionActive}
+                disabled={!isProgressionActive || visualMode === 'piano'}
               >
                 <option value={4}>4th string</option>
                 <option value={5}>5th string</option>
@@ -318,6 +327,7 @@ export default function App() {
         <div className="visual-toggle panel__fullscreen">
           <button
             className="visual-toggle__btn"
+            ref={fullscreenButtonRef}
             onClick={enterFullscreen}
             aria-label="Full screen"
             title="Full screen"
@@ -342,6 +352,7 @@ export default function App() {
               <button
                 className="fullscreen-exit"
                 onClick={exitFullscreen}
+                autoFocus
                 aria-label="Exit full screen"
                 title="Exit full screen"
               >
@@ -357,7 +368,7 @@ export default function App() {
                 scaleId={scaleId}
                 degreeNames={degreeNames}
                 labelMode={labelMode}
-                colorMode={colorMode}
+                colorMode={shownColorMode}
                 chordSize={chordSize}
                 chordRootDegree={chordRootDegree}
                 progressionNumerals={progressionNumerals}
@@ -373,7 +384,7 @@ export default function App() {
                 scaleId={scaleId}
                 degreeNames={degreeNames}
                 labelMode={labelMode}
-                colorMode={colorMode}
+                colorMode={shownColorMode}
                 chordSize={chordSize}
                 chordRootDegree={chordRootDegree}
                 progressionNumerals={progressionNumerals}
@@ -393,7 +404,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="panel panel--footer">
+      <section className="panel panel--footer" inert={isFullscreen}>
             <div
               className="visual-toggle"
               role="radiogroup"
@@ -454,18 +465,18 @@ export default function App() {
 
             <div className="visual-toggle visual-toggle--text" role="radiogroup" aria-label="Color mode">
               <button
-                className={`visual-toggle__btn ${colorMode === 'color' ? 'visual-toggle__btn--active' : ''}`}
+                className={`visual-toggle__btn ${shownColorMode === 'color' ? 'visual-toggle__btn--active' : ''}`}
                 onClick={() => setColorMode('color')}
-                aria-checked={colorMode === 'color'}
+                aria-checked={shownColorMode === 'color'}
                 aria-label="Color"
                 role="radio"
               >
                 Color
               </button>
               <button
-                className={`visual-toggle__btn ${colorMode === 'mono' ? 'visual-toggle__btn--active' : ''}`}
+                className={`visual-toggle__btn ${shownColorMode === 'mono' ? 'visual-toggle__btn--active' : ''}`}
                 onClick={() => setColorMode('mono')}
-                aria-checked={colorMode === 'mono'}
+                aria-checked={shownColorMode === 'mono'}
                 aria-label="Monochrome"
                 role="radio"
                 disabled={isProgressionActive}
@@ -566,6 +577,13 @@ export default function App() {
 
             <Metronome />
       </section>
+
+      <footer className="app__credit" inert={isFullscreen}>
+        by Travis A. Whetsell ·{' '}
+        <a href="https://github.com/tawhetsell/scale-selector" target="_blank" rel="noreferrer">
+          github.com/tawhetsell/scale-selector
+        </a>
+      </footer>
     </div>
   );
 }

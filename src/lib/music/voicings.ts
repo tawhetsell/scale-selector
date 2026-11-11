@@ -64,14 +64,20 @@ function fretSpan(shape: Marker[]): number {
 
 /**
  * Position window around the scale root on the given string: from two frets below the root to
- * three above (clamped at the nut). Prefers the first root between frets 1 and 12.
+ * three above (clamped at the nut). Prefers the first root between frets 1 and 12 whose window
+ * fits on a neck of maxFrets frets; when no root fits, the window slides down to end at the last fret.
  */
-export function getPositionWindow(markers: Marker[], stringIndex: number): FretWindow | null {
+export function getPositionWindow(
+  markers: Marker[],
+  stringIndex: number,
+  maxFrets = Infinity
+): FretWindow | null {
   const roots = markers.filter((m) => m.stringIndex === stringIndex && m.degree === 1);
-  const root = roots.find((m) => m.fret >= 1 && m.fret <= 12) ?? roots[0];
+  const fits = (m: Marker) => m.fret + 3 <= maxFrets;
+  const root = roots.find((m) => m.fret >= 1 && m.fret <= 12 && fits(m)) ?? roots.find(fits) ?? roots[0];
   if (!root) return null;
-  const minFret = Math.max(0, root.fret - 2);
-  return { minFret, maxFret: minFret + 5 };
+  const maxFret = Math.min(maxFrets, Math.max(0, root.fret - 2) + 5);
+  return { minFret: Math.max(0, maxFret - 5), maxFret };
 }
 
 /** The lowest-pitched marker with the given degree; on a unison, the lower string wins. */

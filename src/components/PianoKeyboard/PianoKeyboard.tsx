@@ -4,7 +4,7 @@ import { pcToDegree } from '../../lib/music/theory';
 import { getChordDegrees, type ChordSize, type Inversion } from '../../lib/music/chords';
 import { getChordVoicingMidi } from '../../lib/music/voicings';
 import { getScaleDegreeColors } from '../../lib/music/colors';
-import { SCALES } from '../../lib/music/scales';
+import { SCALES, formatDegreeLabel } from '../../lib/music/scales';
 import { playNote } from '../../lib/audio/synth';
 import './PianoKeyboard.css';
 
@@ -105,6 +105,9 @@ export default function PianoKeyboard({
     return map;
   }, [chordSize, progressionNumerals, chordRootDegree, intervals, inversion, rootPc]);
 
+  // Same rule as the fretboard's accent ring: the chord root for a single chord, otherwise the tonic
+  const accentDegree = chordSize !== null && progressionNumerals === null ? chordRootDegree : 1;
+
   // Render a single key
   const renderKey = (key: KeyInfo) => {
     const degree = pcToDegree(key.pc, rootPc, intervals);
@@ -112,7 +115,7 @@ export default function PianoKeyboard({
 
     // isInSet = key belongs to current display set (scale tones or chord voicing notes)
     const isInSet = chordsByMidi ? chordIndices !== null : degree > 0;
-    const isRoot = isInSet && degree === 1;
+    const isRoot = isInSet && degree === accentDegree;
 
     let color: string | null = null;
     if (isInSet) {
@@ -120,7 +123,9 @@ export default function PianoKeyboard({
         color = isRoot ? MONO_ROOT : MONO_TONE;
       } else if (isMultiChordProgression && chordIndices && progressionNumerals) {
         // Same rule as the fretboard: the color of the chord's root degree
-        color = colorForDegree(progressionNumerals[chordIndices[0]]);
+        // While stepping, a key shared by two voicings takes the current chord's color
+        const chordIndex = currentStep !== null && chordIndices.includes(currentStep) ? currentStep : chordIndices[0];
+        color = colorForDegree(progressionNumerals[chordIndex]);
       } else {
         color = colorForDegree(degree);
       }
@@ -129,7 +134,7 @@ export default function PianoKeyboard({
     const label = !isInSet
       ? null
       : labelMode === 'degree'
-      ? scale.degreeLabels[degree - 1] ?? String(degree)
+      ? formatDegreeLabel(scale.degreeLabels[degree - 1] ?? String(degree))
       : degreeNames[degree - 1] ?? pcToName(key.pc);
 
     // Determine if this key should be faded (Focus mode + not in set)

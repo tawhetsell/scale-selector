@@ -108,3 +108,8 @@ export function getGroupedScales(): ScaleGroup[] {
 
   return groups;
 }
+
+/** A degree label for display, with music signs for its accidentals: 'b3' -> '♭3', '#2/♭3' -> '♯2/♭3'. */
+export function formatDegreeLabel(label: string): string {
+  return label.replace(/b/g, '♭').replace(/#/g, '♯');
+}

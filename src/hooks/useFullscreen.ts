@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
 // lock() isn't in TypeScript's DOM types because browser support is partial (Android Chrome has it)
 type LockableOrientation = ScreenOrientation & { lock?: (orientation: 'landscape') => Promise<void> };
@@ -10,8 +10,11 @@ type LockableOrientation = ScreenOrientation & { lock?: (orientation: 'landscape
  */
 export function useFullscreen(ref: RefObject<HTMLElement | null>) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // The covered page is too short to keep its scroll position, so remember it and put it back on exit
+  const scrollBefore = useRef({ x: 0, y: 0 });
 
   const enter = useCallback(() => {
+    scrollBefore.current = { x: window.scrollX, y: window.scrollY };
     setIsFullscreen(true);
     const el = ref.current;
     if (el?.requestFullscreen) {
@@ -41,6 +44,7 @@ export function useFullscreen(ref: RefObject<HTMLElement | null>) {
       document.removeEventListener('fullscreenchange', onFullscreenChange);
       document.removeEventListener('keydown', onKeyDown);
       document.body.classList.remove('no-scroll');
+      window.scrollTo(scrollBefore.current.x, scrollBefore.current.y);
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
