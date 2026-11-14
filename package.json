@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "fixtures": "node scripts/export-fixtures.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
