@@ -9,7 +9,7 @@ Re-check the code before acting on anything here.
 ## Current state
 
 - `npm run lint`, `npm test` and `npm run build` pass.
-  - `npm test` runs Vitest: 25 tests in `src/lib/music/*.test.ts`.
+  - `npm test` runs Vitest: 67 tests in `src/lib/music/*.test.ts` and `src/components/ProgressionLegend/legendSteps.test.ts` (as of 2026-11-20).
 - There is no CI. Deploying means running `npm run build` and committing `docs/`.
 - A security scan on 2026-10-03, before `fd0d6f1` was pushed, came back clean:
   - no vulnerabilities in the changes;
@@ -100,14 +100,14 @@ The phone layout (formerly item 1) is done as the full-screen view above.
    - Play a whole scale or chord (strummed on guitar).
    - Let the metronome advance the progression one chord per bar, playing each chord.
    - `playNote()` and the shared AudioContext in `src/lib/audio/synth.ts` are the building blocks.
-3. **Scale position patterns** for scale mode: CAGED, three-notes-per-string and pentatonic boxes. The ROOT STR window is a fixed box around the root, not CAGED shapes.
+3. **Scale position patterns** for scale mode: CAGED, three-notes-per-string and pentatonic boxes. The STRING window is a fixed box around the root, not CAGED shapes.
 4. **Info panel** below the instrument:
    - The scale's notes and step formula (W–W–H…).
    - Clickable chord chips (e.g. "ii · F#m7") that replace the numeric DEGREE menu.
 
 ## Backlog
 
-- A string-set choice for single-chord shapes (today all string sets show at once), and drop-2 voicings for tetrads.
+- A string-set choice for chord shapes (today the STRING position and VOICE decide which one shape is ringed), and drop-2 voicings for tetrads.
 - On a phone held upright, the full-screen button wraps to its own line under the top dropdowns. It could be tucked into the panel's top-right corner to save that row.
 - String names at the nut, and fret numbers.
 - Clearer toggle labels in place of "Tune/Drop" and "Half/Full", plus `title` tooltips on the footer toggles.
@@ -161,7 +161,19 @@ Found in a code review plus a browser pass. Unit tests cover the `lib/music` cha
 - A new `scales.test.ts` checks every scale's intervals and degree labels.
 
 Still open from that review:
-- ROOT STR offers only the 4th–6th strings on 7- and 8-string guitars.
+- STRING (formerly ROOT STR) offers only the 4th–6th strings on 7- and 8-string guitars.
 - Fret markers and piano keys can't be played from the keyboard (already in the backlog).
 - With all chords shown, a note shared by several chords takes the first chord's color, so a chord made only of shared notes has no color of its own on the board.
 - Naming choices to revisit: "Aeolian (Nat)", the Bebop Minor variant, and the repeated letters in Altered, Ultralocrian and Enigmatic.
+
+## Brought over from the iOS port on 2026-11-20
+
+The iOS port (scale-selector-ios) had several improvements the web app lacked. Unit tests cover the new `lib/music` and legend logic; the rest was checked in the browser.
+
+- **Chord shapes** (`lib/music/fretboardDisplay.ts`): in both chord modes the fretboard rings one playable shape for VOICE, with the halo on its bass note, picked by `findChordShape()` from the STRING position (nearest shape outside it if none fits; just the bass note if the chord has no shape at all). Other chord notes are plain; the medium ring is now only used in scale mode. Single-chord mode draws every chord tone on the neck, not only the notes inside shapes. A progression's current chord can reach outside the position; those notes are drawn too.
+- **Legend:** always has a current chord. A progression opens on its first chord, the All button is gone, ◀/▶ wrap around, and clicking the selected chord keeps it.
+- **Menus:** PROGS is now "Changes" and ROOT STR is "String" (aria-labels "Chord changes" and "Root string"); the chord menus are ordered Degree, Voice, Changes, String. String is enabled whenever chords are shown on the guitar.
+- **Progression lists** (matching the iOS fixtures): Harmonic Minor's i-vii°-V became i-vii°-i; Hungarian Minor's list is now i-V-i, i-♭VI-V, i-♭III+-V (the two that used the #IVsus2(b5) chord are gone).
+- **Music signs:** the Changes menu and legend numerals show ♭ and ♯ (`formatNumeral()`); names stay ASCII as menu values and in the fixtures.
+- `npm run fixtures` output matched the iOS port's fixtures byte for byte afterwards (all seven files).
+- **Full-screen view:** fret dots above the strings as well as below, with equal space for each, and notes up to 1.8× (1.5× on 24 frets) instead of 1.4×. The normal page view is unchanged.

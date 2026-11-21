@@ -325,10 +325,6 @@ body.no-scroll {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.step-btn--all {
-  font-weight: 500;
-}
-
 /* Visual Mode Toggle (Guitar/Piano) */
 .visual-toggle {
   display: inline-flex;

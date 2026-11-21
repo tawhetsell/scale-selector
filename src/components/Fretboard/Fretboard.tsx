@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { computeFretMap, type Marker } from '../../lib/music/theory';
+import { computeFretMap } from '../../lib/music/theory';
 import { pcToName } from '../../lib/music/notes';
-import { getChordDegrees, type ChordSize, type Inversion } from '../../lib/music/chords';
-import { findChordShapes, findLowestMarker, getPositionWindow } from '../../lib/music/voicings';
+import type { ChordSize, Inversion } from '../../lib/music/chords';
+import { getFretboardDisplay, hasThickRing } from '../../lib/music/fretboardDisplay';
 import { getScaleDegreeColors, pickTextColor } from '../../lib/music/colors';
 import { SCALES, formatDegreeLabel } from '../../lib/music/scales';
 import { playNote } from '../../lib/audio/synth';
@@ -25,32 +25,27 @@ type Props = {
   chordRootDegree: number; // the chord shown when no progression is active
   progressionNumerals: number[] | null; // chord roots of the active progression
   inversion: Inversion;
-  rootString: RootString; // anchors the position window in progression mode
+  rootString: RootString; // anchors the position window for chords
   currentStep: number | null;
   fitToContainer?: boolean; // full-screen view: stretch to the container's height
-};
-
-type Display = {
-  markers: Marker[];
-  bassKeys: Set<string>; // thick ring: the bass note of each shape (single chord) or chord (progression)
-  anchorKey: string | null; // thick ring + halo: key root on the root string (progression)
-  accentDegree: number; // medium ring
-  chordsByDegree: Map<number, number[]> | null; // progression chords containing each degree
-  stepBassKeys: (string | null)[] | null; // progression: each chord's bass note, by chord index
 };
 
 const INLAY_COLOR = '#b6bcc3';
 const STRING_COLOR = 'rgba(255, 255, 255, 0.5)';
 const STANDOUT_OUTLINE = '#ffffff';
 
-const markerKey = (m: Marker) => `${m.stringIndex}:${m.fret}`;
-
 const BASE_STRING_GAP = 28;
 // Larger screens stop looking like a neck past 48; a sideways phone needs more to fill its height
 const MAX_STRING_GAP = 48;
 const MAX_STRING_GAP_PHONE = 64;
 const PHONE_MAX_WIDTH = 900;
-const MAX_MARKER_SCALE = 1.4;
+// Notes grow with the string gap, up to 1.8x (1.5x on the narrower frets of the 24-fret neck)
+const MAX_MARKER_SCALE = 1.8;
+const MAX_MARKER_SCALE_FULL_NECK = 1.5;
+const INLAY_GUTTER = 16; // space below the strings for the fret dots
+// Full-screen view: a deeper gutter (the larger notes would crowd the dots) and the same again
+// above the strings for a second row of dots, so the board is even top and bottom
+const FULLSCREEN_INLAY_GUTTER = INLAY_GUTTER + 8;
 
 export default function Fretboard({
   openStrings,
@@ -77,7 +72,8 @@ export default function Fretboard({
   const nutX = padding + openSpacing;
   const stringsEnd = nutX + maxFrets * fretWidth;
   const width = stringsEnd + padding;
-  const inlayGutter = 16; // Space below strings for fret marker dots
+  const bottomGutter = fitToContainer ? FULLSCREEN_INLAY_GUTTER : INLAY_GUTTER;
+  const topGutter = fitToContainer ? FULLSCREEN_INLAY_GUTTER : 0;
 
   // In the full-screen view, spread the strings out to fill the container's height
   const containerRef = useRef<HTMLDivElement>(null);
@@ -98,14 +94,14 @@ export default function Fretboard({
   }, [fitToContainer]);
   const fittedGap =
     fitToContainer && containerBox
-      ? (containerBox.aspect * width - padding * 2 - inlayGutter) / (strings - 1)
+      ? (containerBox.aspect * width - padding * 2 - topGutter - bottomGutter) / (strings - 1)
       : BASE_STRING_GAP;
   const maxGap = containerBox && containerBox.width < PHONE_MAX_WIDTH ? MAX_STRING_GAP_PHONE : MAX_STRING_GAP;
   const stringGap = Math.min(Math.max(fittedGap, BASE_STRING_GAP), maxGap);
-  const markerScale = Math.min(stringGap / BASE_STRING_GAP, MAX_MARKER_SCALE);
+  const markerScale = Math.min(stringGap / BASE_STRING_GAP, isCompact ? MAX_MARKER_SCALE : MAX_MARKER_SCALE_FULL_NECK);
 
   const stringAreaHeight = padding * 2 + (strings - 1) * stringGap;
-  const boardHeight = stringAreaHeight + inlayGutter;
+  const boardHeight = topGutter + stringAreaHeight + bottomGutter;
   const totalHeight = boardHeight;
 
   const markers = useMemo(
@@ -120,84 +116,33 @@ export default function Fretboard({
   const colorForDegree = (degree: number) =>
     degreeColors[Math.min(Math.max(degree, 1) - 1, degreeColors.length - 1)];
 
-  const display = useMemo((): Display => {
-    if (chordSize === null) {
-      return { markers, bassKeys: new Set(), anchorKey: null, accentDegree: 1, chordsByDegree: null, stepBassKeys: null };
-    }
-
-    if (progressionNumerals === null) {
-      // Single chord: playable shapes for the selected inversion, across the whole neck
-      const degrees = getChordDegrees(intervals.length, chordRootDegree, chordSize, inversion);
-      const shapes = findChordShapes(markers, degrees, degrees[0]);
-      if (shapes.length === 0) {
-        // No playable shape on this neck (rare): show every chord tone rather than a blank board
-        const tones = markers.filter((m) => degrees.includes(m.degree));
-        const bass = findLowestMarker(tones, degrees[0]);
-        return {
-          markers: tones,
-          bassKeys: new Set(bass ? [markerKey(bass)] : []),
-          anchorKey: null,
-          accentDegree: chordRootDegree,
-          chordsByDegree: null,
-          stepBassKeys: null,
-        };
-      }
-      const inShape = new Set(shapes.flat().map(markerKey));
-      return {
-        markers: markers.filter((m) => inShape.has(markerKey(m))),
-        bassKeys: new Set(shapes.map((shape) => markerKey(shape[0]))),
-        anchorKey: null,
-        accentDegree: chordRootDegree,
-        chordsByDegree: null,
-        stepBassKeys: null,
-      };
-    }
-
-    // Progression: every chord's tones inside the position window anchored on the root string
-    const chords = progressionNumerals.map((root) => getChordDegrees(intervals.length, root, chordSize, inversion));
-    const chordsByDegree = new Map<number, number[]>();
-    chords.forEach((degrees, chordIndex) => {
-      for (const degree of degrees) {
-        chordsByDegree.set(degree, [...(chordsByDegree.get(degree) ?? []), chordIndex]);
-      }
-    });
-
-    const rootStringIndex = strings - rootString; // guitar string number -> index (0 = lowest string)
-    const fretWindow = getPositionWindow(markers, rootStringIndex, maxFrets);
-    const shown = markers.filter(
-      (m) =>
-        chordsByDegree.has(m.degree) &&
-        (!fretWindow || (m.fret >= fretWindow.minFret && m.fret <= fretWindow.maxFret))
-    );
-
-    const stepBassKeys = chords.map((degrees) => {
-      const bass = findLowestMarker(shown, degrees[0]);
-      return bass ? markerKey(bass) : null;
-    });
-    const bassKeys = new Set(stepBassKeys.filter((key): key is string => key !== null));
-
-    const anchor = fretWindow
-      ? shown.find((m) => m.stringIndex === rootStringIndex && m.degree === 1)
-      : undefined;
-
-    return {
-      markers: shown,
-      bassKeys,
-      anchorKey: anchor ? markerKey(anchor) : null,
-      accentDegree: 1,
-      chordsByDegree,
-      stepBassKeys,
-    };
-  }, [markers, maxFrets, chordSize, progressionNumerals, intervals.length, chordRootDegree, inversion, strings, rootString]);
+  const display = useMemo(
+    () =>
+      getFretboardDisplay({
+        markers,
+        scaleLength: intervals.length,
+        strings,
+        maxFrets,
+        chordSize,
+        chordRootDegree,
+        progressionNumerals,
+        inversion,
+        rootString,
+        currentStep,
+      }),
+    [markers, intervals.length, strings, maxFrets, chordSize, chordRootDegree, progressionNumerals, inversion, rootString, currentStep]
+  );
 
   const fretX = (fret: number) => nutX + fret * fretWidth;
-  const stringY = (sIdx: number) => padding + (strings - 1 - sIdx) * stringGap;
+  const stringY = (sIdx: number) => topGutter + padding + (strings - 1 - sIdx) * stringGap;
   const stringStartX = padding;
   const stringEndX = stringsEnd;
 
   // Inlay dots centered between visual grid bottom (where fret lines end) and panel bottom
-  const gridVisualBottom = stringAreaHeight - padding + 16; // fret lines extend 16px below lowest string
-  const indicatorY = (gridVisualBottom + boardHeight) / 2;
+  const fretTop = topGutter + padding - 16; // fret lines extend 16 units past the outer strings
+  const fretBottom = topGutter + stringAreaHeight - padding + 16;
+  // Dots below the strings, and in the full-screen view above them too
+  const inlayRows = topGutter > 0 ? [(fretBottom + boardHeight) / 2, fretTop / 2] : [(fretBottom + boardHeight) / 2];
   const inlayFrets = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 
   return (
@@ -222,7 +167,7 @@ export default function Fretboard({
         {/* nut */}
         <rect
           x={nutX - 7}
-          y={padding - 16}
+          y={fretTop}
           width={7}
           height={stringAreaHeight - padding * 2 + 32}
           fill="#ffffff"
@@ -234,9 +179,9 @@ export default function Fretboard({
           <line
             key={`f-${f}`}
             x1={fretX(f)}
-            y1={padding - 16}
+            y1={fretTop}
             x2={fretX(f)}
-            y2={stringAreaHeight - padding + 16}
+            y2={fretBottom}
             stroke={f % 12 === 0 ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.2)'}
             strokeWidth={f % 12 === 0 ? 1.8 : 1}
           />
@@ -247,29 +192,25 @@ export default function Fretboard({
           if (fret > maxFrets) return null;
           const centerX = fretX(fret) - fretWidth / 2;
           const isOctave = fret % 12 === 0;
-          const dots = isOctave
-            ? [
-                { x: centerX - 7, y: indicatorY },
-                { x: centerX + 7, y: indicatorY },
-              ]
-            : [{ x: centerX, y: indicatorY }];
+          const dots = inlayRows.flatMap((y) =>
+            isOctave
+              ? [
+                  { x: centerX - 7, y },
+                  { x: centerX + 7, y },
+                ]
+              : [{ x: centerX, y }]
+          );
           return dots.map(({ x, y }, idx) => (
             <circle key={`inlay-${fret}-${idx}`} cx={x} cy={y} r={4} fill={INLAY_COLOR} />
           ));
         })}
 
         {/* markers */}
-        {display.markers.map((marker) => {
+        {display.notes.map(({ marker, ring }) => {
           const x = fretX(marker.fret) - fretWidth / 2;
           const y = stringY(marker.stringIndex);
-          const key = markerKey(marker);
-          const isKeyRootAnchor = display.anchorKey === key;
-          // While stepping through a progression, only the current chord's bass keeps its ring
-          const isBassNote =
-            currentStep !== null && display.stepBassKeys
-              ? display.stepBassKeys[currentStep] === key
-              : display.bassKeys.has(key);
-          const isAccent = marker.degree === display.accentDegree;
+          const isKeyRootAnchor = ring === 'anchor';
+          const isAccent = ring === 'accent';
 
           // Shared tones belong to several chords; the first chord picks the color
           const chordIndices = display.chordsByDegree?.get(marker.degree) ?? null;
@@ -308,8 +249,8 @@ export default function Fretboard({
               ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.55))'
               : `drop-shadow(0 0 12px ${fill}44)`;
 
-          // Thick stroke for bass notes and the key root anchor; medium stroke for the accent degree
-          const hasThickStroke = isBassNote || isKeyRootAnchor;
+          // Thick stroke for the shape to play (or each chord's bass); medium stroke for degree 1 in scale mode
+          const hasThickStroke = hasThickRing(ring);
           const useStandoutOutline = hasThickStroke || isAccent;
 
           let strokeColor: string;
@@ -340,7 +281,7 @@ export default function Fretboard({
               opacity={markerOpacity}
               onClick={() => playNote(marker.midi)}
             >
-              {/* Halo for key root anchor in position mode */}
+              {/* Halo on the shape's bass note (or the key root with no current chord) */}
               {isKeyRootAnchor && (
                 <circle
                   cx={x}

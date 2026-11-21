@@ -24,7 +24,7 @@ const PROGRESSION_NUMERALS: Record<string, number[][]> = {
   locrian:         [[1, 2], [1, 2, 3], [1, 5, 2]],
 
   // --- Harmonic Minor + modes ---
-  harmonicMinor:   [[1, 4, 5], [1, 6, 5], [1, 4, 5, 1], [1, 7, 5], [6, 5, 1]],
+  harmonicMinor:   [[1, 4, 5], [1, 6, 5], [1, 4, 5, 1], [1, 7, 1], [6, 5, 1]],
   locrianNat6:     [[1, 2, 6], [1, 6, 2], [1, 5, 6]],
   ionianSharp5:    [[1, 4], [1, 2, 4], [1, 5, 4]],
   dorianSharp4:    [[1, 2, 4], [1, 4, 7], [1, 2, 5]],
@@ -45,7 +45,7 @@ const PROGRESSION_NUMERALS: Record<string, number[][]> = {
   doubleHarmonic:  [[1, 2, 1], [1, 6, 2], [1, 4, 2], [1, 5, 2]],
   neapolitanMinor: [[1, 2, 5], [1, 6, 5], [1, 4, 2]],
   neapolitanMajor: [[1, 2, 5], [1, 4, 2], [1, 6, 2]],
-  hungarianMinor:  [[1, 4, 5], [1, 6, 5], [1, 4, 6]],
+  hungarianMinor:  [[1, 5, 1], [1, 6, 5], [1, 3, 5]],
   hungarianMajor:  [[1, 2, 4], [1, 6, 7], [1, 2, 6]],
   persian:         [[1, 2, 5], [1, 6, 2], [1, 4, 2]],
   enigmatic:       [[1, 2, 4], [1, 5, 6], [1, 2, 7]],

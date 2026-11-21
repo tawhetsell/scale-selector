@@ -104,6 +104,15 @@ export function getRomanNumeral(degreeLabel: string, chordIntervals: number[]): 
   return (label?.accidental ?? '') + (isMinor ? numeral.toLowerCase() : numeral) + suffix;
 }
 
+/**
+ * A Roman numeral or progression name for display, with music signs for its accidentals:
+ * 'i-bVI-bVII' -> 'i-♭VI-♭VII', '#iv°' -> '♯iv°'. Lowercase numerals contain no 'b', so only
+ * accidentals change. Not for chord names such as 'Bb', where the 'b' is part of the note name.
+ */
+export function formatNumeral(numeral: string): string {
+  return numeral.replaceAll('b', '♭').replaceAll('#', '♯');
+}
+
 export type ChordLabel = {
   rootDegree: number;
   numeral: string;  // e.g. 'ii7'

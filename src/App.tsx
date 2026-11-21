@@ -4,9 +4,10 @@ import { useFullscreen } from './hooks/useFullscreen';
 import Fretboard from './components/Fretboard/Fretboard';
 import PianoKeyboard from './components/PianoKeyboard/PianoKeyboard';
 import ProgressionLegend, { type LegendChord } from './components/ProgressionLegend/ProgressionLegend';
+import { resolveStep } from './components/ProgressionLegend/legendSteps';
 import { KEY_NAMES, nameToPc, spellScaleDegrees } from './lib/music/notes';
 import { SCALES, getGroupedScales } from './lib/music/scales';
-import { describeChords, getScaleTriads, type ChordSize, type Inversion } from './lib/music/chords';
+import { describeChords, formatNumeral, getScaleTriads, type ChordSize, type Inversion } from './lib/music/chords';
 import { getDegreeColor } from './lib/music/colors';
 import { getTuningPreset } from './lib/music/tunings';
 import { getScaleProgressions } from './lib/music/progressions';
@@ -79,7 +80,8 @@ export default function App() {
   const [rootString, setRootString] = useState<RootString>(4);
   const [voicing, setVoicing] = useState<Voicing>('root');
   const [dropTuning, setDropTuning] = useState(false);
-  const [currentStep, setCurrentStep] = useState<number | null>(null);
+  // The legend's chosen chord; currentStep below keeps it in range (null when there is no legend)
+  const [step, setStep] = useState(0);
   const [visualMode, setVisualMode] = useState<VisualMode>('guitar');
   const [fadeInactiveKeys, setFadeInactiveKeys] = useState(false);
 
@@ -167,6 +169,9 @@ export default function App() {
     }));
   }, [chordSize, progressionNumerals, scale, degreeNames, scaleId]);
 
+  // A legend always has a current chord
+  const currentStep = resolveStep(step, legendChords?.length ?? 0);
+
   // CHORD keeps its setting while a scale without chords is selected; it shows None meanwhile
   const shownViewMode: ViewMode = canShowTriads ? viewMode : 'scale';
   // Progressions are always drawn in color; Mono comes back when the progression is cleared
@@ -184,11 +189,6 @@ export default function App() {
       setSelectedProgression('scale');
     }
   }, [selectedProgression, activeProgression]);
-
-  // Reset step when progression changes
-  useEffect(() => {
-    setCurrentStep(null);
-  }, [selectedProgression]);
 
   // When a progression is selected, default to triads view
   useEffect(() => {
@@ -249,7 +249,7 @@ export default function App() {
               setViewMode(next);
               if (next === 'scale') {
                 setSelectedProgression('scale');
-                setCurrentStep(null);
+                setStep(0);
               }
               if (next !== 'tetrads' && voicing === '3rd') {
                 setVoicing('root'); // triads have no 3rd inversion
@@ -281,35 +281,6 @@ export default function App() {
             </label>
 
             <label className="control">
-              <span className="control__label">Progs</span>
-              <select
-                value={selectedProgression}
-                onChange={(e) => setSelectedProgression(e.target.value)}
-                disabled={!canShowProgressions}
-              >
-                <option value="scale">None</option>
-                {availableProgressions.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="control">
-              <span className="control__label">Root Str</span>
-              <select
-                value={rootString}
-                onChange={(e) => setRootString(Number(e.target.value) as RootString)}
-                disabled={!isProgressionActive || visualMode === 'piano'}
-              >
-                <option value={4}>4th string</option>
-                <option value={5}>5th string</option>
-                <option value={6}>6th string</option>
-              </select>
-            </label>
-
-            <label className="control">
               <span className="control__label">Voice</span>
               <select
                 value={voicing}
@@ -319,6 +290,40 @@ export default function App() {
                 <option value="1st">1st Inv</option>
                 <option value="2nd">2nd Inv</option>
                 {viewMode === 'tetrads' && <option value="3rd">3rd Inv</option>}
+              </select>
+            </label>
+
+            <label className="control">
+              <span className="control__label">Changes</span>
+              <select
+                aria-label="Chord changes"
+                value={selectedProgression}
+                onChange={(e) => {
+                  setSelectedProgression(e.target.value);
+                  setStep(0); // a new progression starts on its first chord
+                }}
+                disabled={!canShowProgressions}
+              >
+                <option value="scale">None</option>
+                {availableProgressions.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {formatNumeral(p.name)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="control">
+              <span className="control__label">String</span>
+              <select
+                aria-label="Root string"
+                value={rootString}
+                onChange={(e) => setRootString(Number(e.target.value) as RootString)}
+                disabled={visualMode === 'piano'}
+              >
+                <option value={4}>4th</option>
+                <option value={5}>5th</option>
+                <option value={6}>6th</option>
               </select>
             </label>
           </>
@@ -393,11 +398,11 @@ export default function App() {
                 fadeInactiveKeys={fadeInactiveKeys}
               />
             )}
-            {legendChords && (
+            {legendChords && currentStep !== null && (
               <ProgressionLegend
                 chords={legendChords}
                 currentStep={currentStep}
-                onStepChange={setCurrentStep}
+                onStepChange={setStep}
               />
             )}
           </div>

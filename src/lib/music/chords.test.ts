@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   describeChords,
+  formatNumeral,
   getChordDegrees,
   getChordIntervals,
   getChordSymbol,
@@ -75,5 +76,29 @@ describe('describeChords', () => {
       'bVI Ab',
       'bVII Bb',
     ]);
+  });
+});
+
+describe('formatNumeral', () => {
+  it('shows accidentals in numerals and progression names as music signs', () => {
+    expect(formatNumeral('i-bVI-bVII')).toBe('i-♭VI-♭VII');
+    expect(formatNumeral('i-bVI-bIII-bVII')).toBe('i-♭VI-♭III-♭VII');
+    expect(formatNumeral('#iv°')).toBe('♯iv°');
+    expect(formatNumeral('i-bIII+-V')).toBe('i-♭III+-V');
+    expect(formatNumeral('ii7')).toBe('ii7');
+    expect(formatNumeral('i-vii°-i')).toBe('i-vii°-i');
+  });
+
+  it('is safe for every generated numeral: lowercase numerals have no b', () => {
+    for (const scale of Object.values(SCALES).filter((s) => s.intervals.length === 7)) {
+      for (const size of [3, 4] as ChordSize[]) {
+        for (let degree = 1; degree <= 7; degree++) {
+          const numeral = getRomanNumeral(scale.degreeLabels[degree - 1], getChordIntervals(scale.intervals, degree, size));
+          const roman = numeral.match(/[ivxIVX]+/)?.[0] ?? '';
+          expect(roman).not.toMatch(/b/);
+          expect(formatNumeral(numeral)).not.toMatch(/[b#]/);
+        }
+      }
+    }
   });
 });

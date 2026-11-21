@@ -10,7 +10,16 @@ describe('getScaleProgressions', () => {
     expect(names('aeolian')).toContain('i-bVI-bIII-bVII');
     expect(names('lydian')).toContain('I-II-vii'); // vii is minor in Lydian
     expect(names('phrygian')).toContain('i-bvii-bVI-bII'); // and bvii is minor in Phrygian
-    expect(names('harmonicMinor')).toContain('i-vii°-V');
+    expect(names('harmonicMinor')).toContain('i-vii°-i');
+  });
+
+  it('matches the iOS app’s lists for Harmonic Minor and Hungarian Minor', () => {
+    expect(getScaleProgressions('harmonicMinor').map((p) => p.numerals)).toEqual([
+      [1, 4, 5], [1, 6, 5], [1, 4, 5, 1], [1, 7, 1], [6, 5, 1],
+    ]);
+    expect(names('harmonicMinor')).not.toContain('i-vii°-V');
+    expect(getScaleProgressions('hungarianMinor').map((p) => p.numerals)).toEqual([[1, 5, 1], [1, 6, 5], [1, 3, 5]]);
+    expect(names('hungarianMinor')).toEqual(['i-V-i', 'i-bVI-V', 'i-bIII+-V']);
   });
 
   it('gives every 7-note scale progressions with unique names and valid chord roots', () => {

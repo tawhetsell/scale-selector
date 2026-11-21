@@ -24,9 +24,9 @@ Top panel:
 - Scale + Key selection (all 12 keys, with sharp and flat spellings; notes are spelled for the key, e.g. B♭ in F major)
 - Chord: None, Triads, or Tetrads (7-note scales only)
 - Degree: which chord to show (1–7)
-- Progs: a named progression for the current scale
-- Root Str: anchors a progression to a fret position around the root on the 4th, 5th, or 6th string
-- Voice: root position or an inversion (the guitar shows playable shapes with that bass note; the piano shows the voicing)
+- Voice: root position or an inversion (the guitar rings one playable shape with that bass note; the piano shows the voicing)
+- Changes: a named progression for the current scale
+- String: places chord shapes in a fret position around the root on the 4th, 5th, or 6th string (guitar)
 - Full screen: shows just the instrument over the whole page (on a phone, turn it sideways)
 
 Bottom panel:
